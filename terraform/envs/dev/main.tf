@@ -1,6 +1,6 @@
 module "platform" {
   source = "../../modules/platform"
 
-  project_name = var.project_name
-  environment  = var.environment
+  project_name = local.project_name
+  environment  = local.environment
 }
