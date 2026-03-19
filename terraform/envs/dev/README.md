@@ -30,8 +30,8 @@ This layout is intended to support a later ECS on Fargate deployment, where:
 - `locals.tf` - Derived values such as common tags
 - `main.tf` - Root module wiring for the VPC module
 - `outputs.tf` - Outputs used by later phases
-- `dev.tfvars.example` - Example variable values for local setup
-- `dev.tfvars` - Real local variable file used for execution (not recommended to commit)
+- `dev.tfvars` - Environment-specific input values for the dev root module
+- `dev.tfvars.example` - Example variable file for reference
 
 ## Variable Strategy
 
@@ -40,11 +40,17 @@ This root module uses:
 - **input variables** for environment-specific values
 - **locals** only for derived values
 
-This keeps the root module reusable and closer to real-world Terraform practice.
+For this showcase project, non-sensitive environment `.tfvars` files are committed to the repository so that:
+
+- local execution is simple
+- GitHub Actions can run Terraform consistently
+- reviewers can reproduce plans more easily
+
+Secrets must **not** be stored in `.tfvars` files.
 
 ## Local Setup
 
-1. Copy the example file:
+1. Initialize Terraform:
 
 ```bash
-cp dev.tfvars.example dev.tfvars
+terraform init

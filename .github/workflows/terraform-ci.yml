@@ -48,7 +48,7 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -no-color
+        run: terraform plan -input=false -no-color -var-file="dev.tfvars"
 
   terraform-prod:
     name: Terraform Prod
@@ -84,4 +84,4 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -no-color
+        run: terraform plan -input=false -no-color -var-file="prod.tfvars"
