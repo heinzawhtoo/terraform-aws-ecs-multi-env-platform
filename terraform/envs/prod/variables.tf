@@ -1,5 +1,5 @@
 variable "aws_region" {
-  description = "AWS region for the dev environment"
+  description = "AWS region for the prod environment"
   type        = string
 }
 

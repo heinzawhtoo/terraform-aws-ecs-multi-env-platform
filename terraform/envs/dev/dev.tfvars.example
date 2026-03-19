@@ -20,3 +20,15 @@ private_subnet_cidrs = [
 ]
 
 enable_nat_gateway = true
+
+app_port = 3000
+
+alb_ingress_cidr_blocks = [
+  "0.0.0.0/0"
+]
+
+health_check_path = "/health"
+
+ecs_log_retention_in_days = 7
+
+enable_container_insights = true

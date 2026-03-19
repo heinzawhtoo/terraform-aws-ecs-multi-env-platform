@@ -1,5 +1,9 @@
 locals {
-  aws_region   = "ap-southeast-1"
-  project_name = "terraform-aws-ecs-multi-env-platform"
-  environment  = "prod"
+  name_prefix = "${var.project_name}-${var.environment}"
+
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
 }

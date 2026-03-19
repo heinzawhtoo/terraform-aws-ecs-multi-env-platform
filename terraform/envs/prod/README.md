@@ -1,14 +1,14 @@
-# Dev Environment - Phase 3 Platform Foundation
+# Prod Environment - Phase 3 Platform Foundation
 
-This directory defines the **dev** root Terraform configuration for the project:
+This directory defines the **prod** root Terraform configuration for the project:
 
 - **Project:** `terraform-aws-ecs-multi-env-platform`
-- **Environment:** `dev`
+- **Environment:** `prod`
 - **Phase:** `3A to 3D - platform foundation`
 
 ## Resources provisioned
 
-This root module provisions the base AWS platform for the dev environment:
+This root module provisions the base AWS platform for the prod environment:
 
 - VPC
 - 2 public subnets
@@ -31,8 +31,8 @@ This root module provisions the base AWS platform for the dev environment:
 - `locals.tf` - Derived values and common tags
 - `main.tf` - Root module wiring
 - `outputs.tf` - Outputs for later phases
-- `dev.tfvars` - Environment values used locally and in CI
-- `dev.tfvars.example` - Reference copy of environment values
+- `prod.tfvars` - Environment values used locally and in CI
+- `prod.tfvars.example` - Reference copy of environment values
 
 ## Variable strategy
 
@@ -55,5 +55,5 @@ Secrets must not be stored in `.tfvars` files.
 terraform fmt -recursive
 terraform init
 terraform validate
-terraform plan -var-file="dev.tfvars"
-terraform apply -var-file="dev.tfvars" -auto-approve
+terraform plan -var-file="prod.tfvars"
+terraform apply -var-file="prod.tfvars" -auto-approve

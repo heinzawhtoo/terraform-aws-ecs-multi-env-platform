@@ -9,7 +9,7 @@ output "project_name" {
 }
 
 output "common_tags" {
-  description = "Common tags applied to resources"
+  description = "Common tags"
   value       = local.common_tags
 }
 
@@ -33,22 +33,47 @@ output "private_subnet_ids" {
   value       = module.vpc.private_subnet_ids
 }
 
-output "internet_gateway_id" {
-  description = "Internet Gateway ID"
-  value       = module.vpc.internet_gateway_id
+output "alb_security_group_id" {
+  description = "ALB security group ID"
+  value       = module.security_groups.alb_security_group_id
 }
 
-output "nat_gateway_id" {
-  description = "NAT Gateway ID"
-  value       = module.vpc.nat_gateway_id
+output "ecs_tasks_security_group_id" {
+  description = "ECS tasks security group ID"
+  value       = module.security_groups.ecs_tasks_security_group_id
 }
 
-output "public_route_table_id" {
-  description = "Public route table ID"
-  value       = module.vpc.public_route_table_id
+output "ecs_app_log_group_name" {
+  description = "ECS app log group name"
+  value       = module.cloudwatch_logs.ecs_app_log_group_name
 }
 
-output "private_route_table_ids" {
-  description = "Private route table IDs"
-  value       = module.vpc.private_route_table_ids
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = module.ecs_cluster.cluster_name
+}
+
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = module.ecs_cluster.cluster_arn
+}
+
+output "alb_arn" {
+  description = "ALB ARN"
+  value       = module.alb.alb_arn
+}
+
+output "alb_dns_name" {
+  description = "ALB DNS name"
+  value       = module.alb.alb_dns_name
+}
+
+output "target_group_arn" {
+  description = "Target group ARN"
+  value       = module.alb.target_group_arn
+}
+
+output "http_listener_arn" {
+  description = "HTTP listener ARN"
+  value       = module.alb.http_listener_arn
 }

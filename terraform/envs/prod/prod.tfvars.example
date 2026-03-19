@@ -1,8 +1,8 @@
 aws_region   = "ap-southeast-1"
 project_name = "terraform-aws-ecs-multi-env-platform"
-environment  = "dev"
+environment  = "prod"
 
-vpc_cidr = "10.10.0.0/16"
+vpc_cidr = "10.20.0.0/16"
 
 availability_zones = [
   "ap-southeast-1a",
@@ -10,13 +10,13 @@ availability_zones = [
 ]
 
 public_subnet_cidrs = [
-  "10.10.1.0/24",
-  "10.10.2.0/24"
+  "10.20.1.0/24",
+  "10.20.2.0/24"
 ]
 
 private_subnet_cidrs = [
-  "10.10.11.0/24",
-  "10.10.12.0/24"
+  "10.20.11.0/24",
+  "10.20.12.0/24"
 ]
 
 enable_nat_gateway = true
@@ -29,6 +29,6 @@ alb_ingress_cidr_blocks = [
 
 health_check_path = "/health"
 
-ecs_log_retention_in_days = 7
+ecs_log_retention_in_days = 30
 
 enable_container_insights = true
