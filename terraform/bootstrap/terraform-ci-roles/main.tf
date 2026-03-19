@@ -114,7 +114,8 @@ data "aws_iam_policy_document" "terraform_dev_permissions" {
       "iam:ListRolePolicies",
       "iam:ListInstanceProfilesForRole",
       "application-autoscaling:Describe*",
-      "cloudwatch:DescribeAlarms"
+      "cloudwatch:DescribeAlarms",
+      "ec2:DescribeAddressesAttribute",
     ]
 
     resources = ["*"]
