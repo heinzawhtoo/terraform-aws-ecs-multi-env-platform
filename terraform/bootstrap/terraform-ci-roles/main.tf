@@ -42,27 +42,82 @@ resource "aws_iam_role" "terraform_prod" {
   assume_role_policy = data.aws_iam_policy_document.github_oidc_assume_role.json
 }
 
-data "aws_iam_policy_document" "terraform_ci_permissions" {
+data "aws_iam_policy_document" "terraform_dev_permissions" {
   statement {
     sid    = "AllowStsCallerIdentity"
     effect = "Allow"
 
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowStateBucketList"
+    effect = "Allow"
+
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1"]
+  }
+
+  statement {
+    sid    = "AllowDevStateObjectAccess"
+    effect = "Allow"
+
     actions = [
-      "sts:GetCallerIdentity"
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
     ]
 
-    resources = ["*"]
+    resources = [
+      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/dev/terraform.tfstate",
+      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/dev/terraform.tfstate.tflock"
+    ]
   }
 }
 
-resource "aws_iam_role_policy" "terraform_dev_test_permissions" {
-  name   = "${var.dev_role_name}-test"
-  role   = aws_iam_role.terraform_dev.id
-  policy = data.aws_iam_policy_document.terraform_ci_permissions.json
+data "aws_iam_policy_document" "terraform_prod_permissions" {
+  statement {
+    sid    = "AllowStsCallerIdentity"
+    effect = "Allow"
+
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowStateBucketList"
+    effect = "Allow"
+
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1"]
+  }
+
+  statement {
+    sid    = "AllowProdStateObjectAccess"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
+    ]
+
+    resources = [
+      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/prod/terraform.tfstate",
+      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/prod/terraform.tfstate.tflock"
+    ]
+  }
 }
 
-resource "aws_iam_role_policy" "terraform_prod_test_permissions" {
-  name   = "${var.prod_role_name}-test"
+resource "aws_iam_role_policy" "terraform_dev_permissions" {
+  name   = "${var.dev_role_name}-backend"
+  role   = aws_iam_role.terraform_dev.id
+  policy = data.aws_iam_policy_document.terraform_dev_permissions.json
+}
+
+resource "aws_iam_role_policy" "terraform_prod_permissions" {
+  name   = "${var.prod_role_name}-backend"
   role   = aws_iam_role.terraform_prod.id
-  policy = data.aws_iam_policy_document.terraform_ci_permissions.json
+  policy = data.aws_iam_policy_document.terraform_prod_permissions.json
 }
