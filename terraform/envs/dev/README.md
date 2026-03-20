@@ -1,59 +1,147 @@
-# Dev Environment - Phase 3 Platform Foundation
+# dev environment
 
-This directory defines the **dev** root Terraform configuration for the project:
+## Purpose
 
-- **Project:** `terraform-aws-ecs-multi-env-platform`
-- **Environment:** `dev`
-- **Phase:** `3A to 3D - platform foundation`
+This folder is the Terraform root for the **dev** environment.
 
-## Resources provisioned
-
-This root module provisions the base AWS platform for the dev environment:
+It composes the shared modules under `terraform/modules` to build the current Phase 3 platform foundation for development and testing. At the current stage, that includes:
 
 - VPC
-- 2 public subnets
-- 2 private subnets
-- Internet Gateway
-- NAT Gateway
-- ALB security group
-- ECS tasks security group
+- public and private subnets
+- security groups
 - CloudWatch log group
 - ECS cluster
-- Application Load Balancer
-- Target group
-- HTTP listener
+- Application Load Balancer (ALB)
 
-## File overview
+This environment is intended for iteration, validation, and lower-risk infrastructure changes.
 
-- `backend.tf` - Remote state backend
-- `providers.tf` - Terraform and provider configuration
-- `variables.tf` - Root input variables
-- `locals.tf` - Derived values and common tags
-- `main.tf` - Root module wiring
-- `outputs.tf` - Outputs for later phases
-- `dev.tfvars` - Environment values used locally and in CI
-- `dev.tfvars.example` - Reference copy of environment values
+---
 
-## Variable strategy
+## Current Scope
 
-This root module uses:
+The dev environment currently provisions the base AWS platform only.
 
-- **input variables** for environment-specific values
-- **locals** only for derived values such as shared tags
+### Implemented
 
-For this showcase project, non-sensitive environment `.tfvars` files are committed so that:
+- VPC and subnet layout
+- Internet gateway
+- Optional NAT gateway behavior controlled by `enable_nat_gateway`
+- ALB and target group
+- ECS cluster
+- CloudWatch log group
+- ALB and ECS task security groups
 
-- local runs are simple
-- CI runs are reproducible
-- repo reviewers can understand the root module inputs easily
+### Not implemented yet
 
-Secrets must not be stored in `.tfvars` files.
+- ECS service
+- ECS task definition
+- ECR-based image workflow
+- HTTPS / ACM
+- autoscaling
+- full application deployment pipeline
+
+---
+
+## Key Files
+
+- `main.tf` — wires together the shared Terraform modules for the dev environment
+- `variables.tf` — defines the inputs used by this environment
+- `outputs.tf` — exposes useful infrastructure outputs such as VPC, ALB, and ECS cluster details
+- `backend.tf` — configures the remote backend for dev state
+- `dev.tfvars` — contains the concrete input values for the dev environment
+
+---
+
+## Important Local Decisions
+
+### Dev NAT strategy
+
+The dev environment currently uses:
+
+```hcl
+enable_nat_gateway = false
+```
+This is an intentional cost-control decision for the current phase.
+
+That means:
+
+- private subnets in dev do not have outbound internet access through a NAT gateway
+- dev is intentionally more cost-optimized than prod right now
+- NAT can be re-enabled later if ECS service deployment or private-subnet egress requirements make it necessary
+
+### ALB naming
+
+ALB-related resources use a short configurable prefix through alb_name_prefix instead of the full project name.
+
+This exists because AWS load balancer and target group names have strict length limits.
+
+---
 
 ## Commands
 
-```powershell
-terraform fmt -recursive
+Run these commands from this folder.
+
+### Plan
+
+```bash 
 terraform init
+terraform fmt -check
 terraform validate
 terraform plan -var-file="dev.tfvars"
-terraform apply -var-file="dev.tfvars" -auto-approve
+```
+
+### Apply
+
+```bash
+terraform apply -var-file="dev.tfvars"
+```
+
+### Destroy
+
+```bash
+terraform destroy -var-file="dev.tfvars"
+```
+---
+
+## What to Edit Here
+
+Edit files in this folder when you want to change dev-specific values, such as:
+
+- CIDR ranges
+- availability zones
+- app port
+- ALB ingress CIDRs
+- log retention
+- container insights setting
+- NAT behavior
+- ALB short name prefix
+
+If you want to change shared infrastructure logic used by both dev and prod, edit the appropriate module under `terraform/modules` instead.
+
+---
+
+## Outputs You Get
+
+This environment exposes outputs including:
+
+- VPC ID and CIDR
+- public and private subnet IDs
+- ALB security group ID
+- ECS tasks security group ID
+- ECS cluster name and ARN
+- ALB ARN and DNS name
+- target group ARN
+- HTTP listener ARN
+
+---
+
+## Relationship to Prod
+
+The dev environment is intentionally close to prod in structure, but not identical.
+
+Current important difference:
+
+- dev has NAT disabled for cost control
+- prod keeps a more production-like posture
+
+This tradeoff is deliberate and documented so the repo stays honest about its current behavior.
