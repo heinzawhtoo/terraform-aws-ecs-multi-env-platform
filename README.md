@@ -111,6 +111,7 @@ At the current stage, the most accurate description of this repo is:
 ---
 
 ## Environments
+
 This project uses two isolated Terraform environments:
 
 - **dev** — used for testing, iteration, and lower-risk changes
@@ -195,6 +196,7 @@ Recommended tools:
 ---
 
 ## Local Usage
+
 ### Dev
 
 ```bash
@@ -236,11 +238,10 @@ Destroy:
 terraform destroy -var-file="prod.tfvars"
 ```
 
-
----
 ---
 
 ## Operational Guidance
+
 ### What should stay persistent
 
 Keep the Terraform backend S3 bucket persistent.
@@ -261,6 +262,7 @@ Do not destroy the remote backend unless you are intentionally tearing down the 
 ---
 
 ## Cost Notes
+
 This repository is built to reflect a realistic AWS platform structure, not a free-tier-only toy setup.
 
 ### Important cost drivers
@@ -336,6 +338,7 @@ This improves cost efficiency during the current phase, but it also means dev an
 ---
 
 ## Current Terraform Modules
+
 `vpc`
 
 Creates the base networking layer, including:
@@ -371,6 +374,8 @@ Creates the Application Load Balancer foundation, including:
 - listener
 - target group
 
+To satisfy AWS name-length limits, ALB-related resources use a short configurable prefix (`alb_name_prefix`) instead of the full project name.
+
 This is currently platform groundwork, not yet a complete app-routing solution.
 
 ---
@@ -390,7 +395,9 @@ This project follows a few simple rules:
 That last one matters more than people think. A smaller repo that tells the truth beats a flashy repo that oversells itself.
 
 ---
+
 ## Why This Repo Exists
+
 This repository is meant to be:
 
 - a real learning project
@@ -401,28 +408,6 @@ This repository is meant to be:
 It is not trying to be a giant fake-enterprise template stuffed with unfinished promises.
 
 That kind of repo looks impressive for five minutes and painful forever.
-
----
-
-Next Planned Work
-
-The next major phase is expected to focus on:
-
-adding an ECR module
-
-adding ECS task definition support
-
-adding ECS service support
-
-connecting ECS services to the ALB target group
-
-creating an application deployment workflow
-
-improving security posture
-
-moving toward HTTPS and more production-grade behavior
-
-That is where this foundation starts turning into a real deployable platform.
 
 ---
 
@@ -445,6 +430,7 @@ That is where this foundation starts turning into a real deployable platform.
 ---
 
 ## Contributing
+
 This is currently a personal showcase and learning project, but suggestions and improvements are welcome.
 
 If you fork or adapt this repository:
@@ -453,8 +439,7 @@ If you fork or adapt this repository:
 - review security defaults carefully
 - review cost-impacting resources
 - avoid committing secrets
-
-treat this as a foundation, not a finished production template
+- treat this as a foundation, not a finished production template
 
 ---
 
