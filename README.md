@@ -282,7 +282,21 @@ The main cost drivers in the current and upcoming phases are:
 
 AWS is very good at charging rent for resources that sit there quietly doing nothing. That part is unfortunately world-class.
 
+### Dev NAT strategy
+
+The `dev` environment has `enable_nat_gateway = false` to reduce idle AWS cost during the current infrastructure phase.
+
+This means:
+
+- dev private subnets do not have outbound internet access through a NAT gateway
+- dev is intentionally more cost-optimized than prod at this stage
+- this tradeoff is acceptable for the current base platform phase
+- NAT can be re-enabled later when ECS service deployment or other private-subnet egress requirements make it necessary
+
+This is a deliberate cost-control decision, not an accident.
+
 ---
+
 ## Security Notes
 
 The current Phase 3 setup favors momentum and platform progress over final production hardening.
@@ -309,6 +323,15 @@ Upcoming improvements are expected to include:
 This is deliberate. The platform is being built in the correct order:
 
 **foundation first, then deployment, then hardening and polish**
+
+### Dev vs prod networking tradeoff
+
+To keep costs under control during early platform build-out:
+
+- `prod` retains a more production-like network posture
+- `dev` may use a reduced-cost setup, including NAT being disabled
+
+This improves cost efficiency during the current phase, but it also means dev and prod are not fully identical in outbound private-subnet behavior.
 
 ---
 
@@ -414,6 +437,8 @@ The next major phase is expected to focus on:
 - creating an application deployment workflow
 - improving security posture
 - moving toward HTTPS and more production-grade behavior
+- Reassess dev NAT requirements once ECS service deployment is added
+- Introduce selective VPC endpoints later to reduce NAT dependence for AWS service access
 
 That is where this foundation starts turning into a real deployable platform.
 

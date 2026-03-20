@@ -19,7 +19,7 @@ private_subnet_cidrs = [
   "10.10.12.0/24"
 ]
 
-enable_nat_gateway = true
+enable_nat_gateway = false
 
 app_port = 3000
 
