@@ -64,3 +64,9 @@ variable "enable_container_insights" {
   type        = bool
   default     = true
 }
+
+variable "alb_name_prefix" {
+  description = "Short prefix used for ALB resources with AWS name length limits"
+  type        = string
+  default     = "tfecs"
+}

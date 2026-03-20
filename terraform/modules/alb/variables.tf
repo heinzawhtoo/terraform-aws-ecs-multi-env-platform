@@ -1,3 +1,8 @@
+variable "name_prefix" {
+  description = "Short prefix used for AWS resources with strict name length limits"
+  type        = string
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string

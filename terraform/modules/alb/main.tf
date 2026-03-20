@@ -1,6 +1,6 @@
 locals {
-  alb_name = "ecsplat-${var.environment}-alb"
-  tg_name  = "ecsplat-${var.environment}-tg"
+  alb_name = "${var.name_prefix}-${var.environment}-alb"
+  tg_name  = "${var.name_prefix}-${var.environment}-tg"
 }
 
 resource "aws_lb" "this" {
