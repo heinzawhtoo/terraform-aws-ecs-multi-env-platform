@@ -77,3 +77,43 @@ output "http_listener_arn" {
   description = "HTTP listener ARN"
   value       = module.alb.http_listener_arn
 }
+
+output "ecr_repository_name" {
+  description = "ECR repository name"
+  value       = module.ecr.repository_name
+}
+
+output "ecr_repository_arn" {
+  description = "ECR repository ARN"
+  value       = module.ecr.repository_arn
+}
+
+output "ecr_repository_url" {
+  description = "ECR repository URL"
+  value       = module.ecr.repository_url
+}
+
+output "ecs_task_execution_role_name" {
+  description = "ECS task execution role name"
+  value       = module.ecs_task_execution_role.role_name
+}
+
+output "ecs_task_execution_role_arn" {
+  description = "ECS task execution role ARN"
+  value       = module.ecs_task_execution_role.role_arn
+}
+
+output "ecs_task_definition_arn" {
+  description = "ECS task definition ARN"
+  value       = module.ecs_task_definition.task_definition_arn
+}
+
+output "ecs_task_definition_family" {
+  description = "ECS task definition family"
+  value       = module.ecs_task_definition.task_definition_family
+}
+
+output "ecs_task_definition_revision" {
+  description = "ECS task definition revision"
+  value       = module.ecs_task_definition.task_definition_revision
+}

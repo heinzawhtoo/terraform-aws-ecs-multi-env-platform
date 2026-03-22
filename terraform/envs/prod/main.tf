@@ -52,3 +52,37 @@ module "alb" {
   health_check_path     = var.health_check_path
   common_tags           = local.common_tags
 }
+
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project_name = var.project_name
+  environment  = var.environment
+  force_delete = var.ecr_force_delete
+  common_tags  = local.common_tags
+}
+
+module "ecs_task_execution_role" {
+  source = "../../modules/ecs_task_execution_role"
+
+  name_prefix = var.ecs_name_prefix
+  environment = var.environment
+  common_tags = local.common_tags
+}
+
+module "ecs_task_definition" {
+  source = "../../modules/ecs_task_definition"
+
+  project_name          = var.project_name
+  environment           = var.environment
+  aws_region            = var.aws_region
+  container_name        = var.container_name
+  container_image       = "${module.ecr.repository_url}:${var.container_image_tag}"
+  app_port              = var.app_port
+  log_group_name        = module.cloudwatch_logs.ecs_app_log_group_name
+  task_cpu              = var.task_cpu
+  task_memory           = var.task_memory
+  execution_role_arn    = module.ecs_task_execution_role.role_arn
+  container_environment = var.container_environment
+  common_tags           = local.common_tags
+}

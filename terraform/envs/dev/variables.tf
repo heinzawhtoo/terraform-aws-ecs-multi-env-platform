@@ -70,3 +70,45 @@ variable "alb_name_prefix" {
   type        = string
   default     = "tfecs"
 }
+
+variable "ecs_name_prefix" {
+  description = "Short prefix used for ECS-related IAM/resource names with AWS length limits"
+  type        = string
+  default     = "tfecs"
+}
+
+variable "ecr_force_delete" {
+  description = "Whether to force delete the ECR repository if it still contains images"
+  type        = bool
+  default     = false
+}
+
+variable "container_name" {
+  description = "Container name used in the task definition"
+  type        = string
+  default     = "app"
+}
+
+variable "container_image_tag" {
+  description = "Initial image tag referenced by the task definition"
+  type        = string
+  default     = "bootstrap"
+}
+
+variable "task_cpu" {
+  description = "Task CPU units for Fargate"
+  type        = number
+  default     = 256
+}
+
+variable "task_memory" {
+  description = "Task memory in MiB for Fargate"
+  type        = number
+  default     = 512
+}
+
+variable "container_environment" {
+  description = "Environment variables passed into the container"
+  type        = map(string)
+  default     = {}
+}

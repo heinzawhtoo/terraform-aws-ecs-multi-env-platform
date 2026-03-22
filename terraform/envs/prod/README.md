@@ -90,19 +90,19 @@ terraform plan -var-file="prod.tfvars"
 ### Apply
 
 ```bash
-terraform apply -var-file="dev.tfvars"
+terraform apply -var-file="prod.tfvars"
 ```
 
 ### Destroy
 
 ```bash
-terraform destroy -var-file="dev.tfvars"
+terraform destroy -var-file="prod.tfvars"
 ```
 ---
 
 ## What to Edit Here
 
-Edit files in this folder when you want to change dev-specific values, such as:
+Edit files in this folder when you want to change prod-specific values, such as:
 
 - CIDR ranges
 - availability zones

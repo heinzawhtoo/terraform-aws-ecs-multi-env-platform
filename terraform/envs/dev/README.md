@@ -54,21 +54,6 @@ The dev environment currently provisions the base AWS platform only.
 
 ## Important Local Decisions
 
-### Dev NAT strategy
-
-The dev environment currently uses:
-
-```hcl
-enable_nat_gateway = false
-```
-This is an intentional cost-control decision for the current phase.
-
-That means:
-
-- private subnets in dev do not have outbound internet access through a NAT gateway
-- dev is intentionally more cost-optimized than prod right now
-- NAT can be re-enabled later if ECS service deployment or private-subnet egress requirements make it necessary
-
 ### ALB naming
 
 ALB-related resources use a short configurable prefix through alb_name_prefix instead of the full project name.

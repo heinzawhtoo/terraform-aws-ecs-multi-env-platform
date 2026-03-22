@@ -188,9 +188,7 @@ Before using this repository, make sure you have:
 Recommended tools:
 
 - AWS CLI
-
 - Git
-
 - A separate AWS sandbox or careful IAM isolation for experimentation
 
 ---
@@ -286,16 +284,9 @@ AWS is very good at charging rent for resources that sit there quietly doing not
 
 ### Dev NAT strategy
 
-The `dev` environment has `enable_nat_gateway = false` to reduce idle AWS cost during the current infrastructure phase.
-
-This means:
-
-- dev private subnets do not have outbound internet access through a NAT gateway
-- dev is intentionally more cost-optimized than prod at this stage
-- this tradeoff is acceptable for the current base platform phase
-- NAT can be re-enabled later when ECS service deployment or other private-subnet egress requirements make it necessary
-
-This is a deliberate cost-control decision, not an accident.
+For Phase 4 preparation, the `dev` environment now has `enable_nat_gateway = true`.
+This change was made so ECS workloads running in private subnets can use outbound access more like a real deployment environment.
+This improves dev/prod networking consistency for container runtime behavior, at the cost of higher idle AWS spend.
 
 ---
 
@@ -328,12 +319,9 @@ This is deliberate. The platform is being built in the correct order:
 
 ### Dev vs prod networking tradeoff
 
-To keep costs under control during early platform build-out:
-
-- `prod` retains a more production-like network posture
-- `dev` may use a reduced-cost setup, including NAT being disabled
-
-This improves cost efficiency during the current phase, but it also means dev and prod are not fully identical in outbound private-subnet behavior.
+At this stage, both `dev` and `prod` use NAT-enabled private subnet routing.
+This keeps runtime behavior more consistent across environments as the project moves into ECS service and deployment work.
+The cost tradeoff remains important, so unused environment infrastructure should still be destroyed when idle.
 
 ---
 
@@ -422,7 +410,6 @@ The next major phase is expected to focus on:
 - creating an application deployment workflow
 - improving security posture
 - moving toward HTTPS and more production-grade behavior
-- Reassess dev NAT requirements once ECS service deployment is added
 - Introduce selective VPC endpoints later to reduce NAT dependence for AWS service access
 
 That is where this foundation starts turning into a real deployable platform.

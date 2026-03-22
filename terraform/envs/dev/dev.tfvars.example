@@ -19,7 +19,7 @@ private_subnet_cidrs = [
   "10.10.12.0/24"
 ]
 
-enable_nat_gateway = false
+enable_nat_gateway = true
 
 app_port = 3000
 
@@ -32,3 +32,15 @@ health_check_path = "/health"
 ecs_log_retention_in_days = 7
 
 enable_container_insights = true
+
+ecs_name_prefix     = "tfecs"
+ecr_force_delete    = true
+container_name      = "app"
+container_image_tag = "bootstrap"
+
+task_cpu    = 256
+task_memory = 512
+
+container_environment = {
+  APP_ENV = "dev"
+}
