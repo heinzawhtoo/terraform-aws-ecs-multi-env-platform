@@ -112,3 +112,21 @@ variable "container_environment" {
   type        = map(string)
   default     = {}
 }
+
+variable "service_desired_count" {
+  description = "Desired number of ECS tasks"
+  type        = number
+  default     = 1
+}
+
+variable "enable_execute_command" {
+  description = "Enable ECS Exec for the service"
+  type        = bool
+  default     = false
+}
+
+variable "health_check_grace_period_seconds" {
+  description = "Grace period before ALB health checks affect ECS service stability"
+  type        = number
+  default     = 60
+}

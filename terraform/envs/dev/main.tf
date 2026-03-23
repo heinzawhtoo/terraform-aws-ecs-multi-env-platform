@@ -86,3 +86,23 @@ module "ecs_task_definition" {
   container_environment = var.container_environment
   common_tags           = local.common_tags
 }
+
+module "ecs_service" {
+  source = "../../modules/ecs_service"
+
+  project_name                      = var.project_name
+  environment                       = var.environment
+  cluster_arn                       = module.ecs_cluster.cluster_arn
+  task_definition_arn               = module.ecs_task_definition.task_definition_arn
+  container_name                    = var.container_name
+  container_port                    = var.app_port
+  target_group_arn                  = module.alb.target_group_arn
+  private_subnet_ids                = module.vpc.private_subnet_ids
+  ecs_tasks_security_group_id       = module.security_groups.ecs_tasks_security_group_id
+  desired_count                     = var.service_desired_count
+  enable_execute_command            = var.enable_execute_command
+  health_check_grace_period_seconds = var.health_check_grace_period_seconds
+  common_tags                       = local.common_tags
+
+  depends_on = [module.alb]
+}

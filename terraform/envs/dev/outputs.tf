@@ -117,3 +117,13 @@ output "ecs_task_definition_revision" {
   description = "ECS task definition revision"
   value       = module.ecs_task_definition.task_definition_revision
 }
+
+output "ecs_service_name" {
+  description = "ECS service name"
+  value       = module.ecs_service.service_name
+}
+
+output "ecs_service_arn" {
+  description = "ECS service ARN"
+  value       = module.ecs_service.service_arn
+}

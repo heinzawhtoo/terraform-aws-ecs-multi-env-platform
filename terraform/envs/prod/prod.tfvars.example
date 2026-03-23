@@ -44,3 +44,7 @@ task_memory = 512
 container_environment = {
   APP_ENV = "prod"
 }
+
+service_desired_count             = 1
+enable_execute_command            = false
+health_check_grace_period_seconds = 60
