@@ -33,3 +33,8 @@ variable "prod_role_name" {
   type        = string
   default     = "github-actions-terraform-prod"
 }
+
+variable "tf_state_bucket_name" {
+  description = "S3 bucket name for Terraform remote state"
+  type        = string
+}

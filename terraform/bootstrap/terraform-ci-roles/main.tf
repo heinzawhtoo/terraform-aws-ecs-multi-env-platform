@@ -1,5 +1,34 @@
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
 data "aws_iam_openid_connect_provider" "github" {
-  arn = "arn:aws:iam::066506852481:oidc-provider/token.actions.githubusercontent.com"
+  url = "https://token.actions.githubusercontent.com"
+}
+
+locals {
+  account_id = data.aws_caller_identity.current.account_id
+  partition  = data.aws_partition.current.partition
+
+  tf_state_bucket_arn = "arn:${local.partition}:s3:::${var.tf_state_bucket_name}"
+
+  dev_state_object_arns = [
+    "${local.tf_state_bucket_arn}/envs/dev/terraform.tfstate",
+    "${local.tf_state_bucket_arn}/envs/dev/terraform.tfstate.tflock",
+  ]
+
+  prod_state_object_arns = [
+    "${local.tf_state_bucket_arn}/envs/prod/terraform.tfstate",
+    "${local.tf_state_bucket_arn}/envs/prod/terraform.tfstate.tflock",
+  ]
+
+  dev_logs_arn = "arn:${local.partition}:logs:${var.aws_region}:${local.account_id}:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-dev*"
+  prod_logs_arn = "arn:${local.partition}:logs:${var.aws_region}:${local.account_id}:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-prod*"
+
+  ecr_repo_arn = "arn:${local.partition}:ecr:${var.aws_region}:${local.account_id}:repository/terraform-aws-ecs-multi-env-platform*"
+
+  dev_role_pattern_arn  = "arn:${local.partition}:iam::${local.account_id}:role/terraform-aws-ecs-multi-env-platform-dev-*"
+  prod_role_pattern_arn = "arn:${local.partition}:iam::${local.account_id}:role/terraform-aws-ecs-multi-env-platform-prod-*"
 }
 
 data "aws_iam_policy_document" "github_oidc_assume_role" {
@@ -47,7 +76,10 @@ data "aws_iam_policy_document" "terraform_dev_permissions" {
     sid    = "AllowStsCallerIdentity"
     effect = "Allow"
 
-    actions   = ["sts:GetCallerIdentity"]
+    actions = [
+      "sts:GetCallerIdentity"
+    ]
+
     resources = ["*"]
   }
 
@@ -60,7 +92,7 @@ data "aws_iam_policy_document" "terraform_dev_permissions" {
       "s3:GetBucketLocation"
     ]
 
-    resources = ["arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1"]
+    resources = [local.tf_state_bucket_arn]
   }
 
   statement {
@@ -73,298 +105,7 @@ data "aws_iam_policy_document" "terraform_dev_permissions" {
       "s3:DeleteObject"
     ]
 
-    resources = [
-      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/dev/terraform.tfstate",
-      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/dev/terraform.tfstate.tflock"
-    ]
-  }
-
-  statement {
-    sid    = "AllowTerraformAwsReadAccess"
-    effect = "Allow"
-
-    actions = [
-      "ec2:DescribeAccountAttributes",
-      "ec2:DescribeAddresses",
-      "ec2:DescribeAvailabilityZones",
-      "ec2:DescribeInternetGateways",
-      "ec2:DescribeManagedPrefixLists",
-      "ec2:DescribeNatGateways",
-      "ec2:DescribeNetworkInterfaces",
-      "ec2:DescribeRouteTables",
-      "ec2:DescribeSecurityGroups",
-      "ec2:DescribeSubnets",
-      "ec2:DescribeTags",
-      "ec2:DescribeVpcs",
-      "ec2:DescribeVpcAttribute",
-      "elasticloadbalancing:Describe*",
-      "ecs:Describe*",
-      "ecs:List*",
-      "ecr:DescribeRepositories",
-      "ecr:DescribeImages",
-      "ecr:ListTagsForResource",
-      "ecr:GetAuthorizationToken",
-      "logs:DescribeLogGroups",
-      "logs:DescribeLogStreams",
-      "logs:ListTagsForResource",
-      "iam:GetRole",
-      "iam:GetPolicy",
-      "iam:GetPolicyVersion",
-      "iam:ListAttachedRolePolicies",
-      "iam:ListRolePolicies",
-      "iam:ListInstanceProfilesForRole",
-      "application-autoscaling:Describe*",
-      "cloudwatch:DescribeAlarms",
-      "ec2:DescribeAddressesAttribute",
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowTerraformEc2NetworkingWrite"
-    effect = "Allow"
-
-    actions = [
-      "ec2:AllocateAddress",
-      "ec2:AssociateRouteTable",
-      "ec2:AttachInternetGateway",
-      "ec2:CreateInternetGateway",
-      "ec2:CreateNatGateway",
-      "ec2:CreateRoute",
-      "ec2:CreateRouteTable",
-      "ec2:CreateSecurityGroup",
-      "ec2:CreateSubnet",
-      "ec2:CreateTags",
-      "ec2:CreateVpc",
-      "ec2:DeleteInternetGateway",
-      "ec2:DeleteNatGateway",
-      "ec2:DeleteRoute",
-      "ec2:DeleteRouteTable",
-      "ec2:DeleteSecurityGroup",
-      "ec2:DeleteSubnet",
-      "ec2:DeleteTags",
-      "ec2:DeleteVpc",
-      "ec2:DetachInternetGateway",
-      "ec2:DisassociateRouteTable",
-      "ec2:ModifySubnetAttribute",
-      "ec2:ModifyVpcAttribute",
-      "ec2:ReleaseAddress",
-      "ec2:ReplaceRoute",
-      "ec2:RevokeSecurityGroupEgress",
-      "ec2:RevokeSecurityGroupIngress",
-      "ec2:AuthorizeSecurityGroupEgress",
-      "ec2:AuthorizeSecurityGroupIngress"
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowTerraformAlbAccess"
-    effect = "Allow"
-
-    actions = [
-      "elasticloadbalancing:AddTags",
-      "elasticloadbalancing:CreateListener",
-      "elasticloadbalancing:CreateLoadBalancer",
-      "elasticloadbalancing:CreateRule",
-      "elasticloadbalancing:CreateTargetGroup",
-      "elasticloadbalancing:DeleteListener",
-      "elasticloadbalancing:DeleteLoadBalancer",
-      "elasticloadbalancing:DeleteRule",
-      "elasticloadbalancing:DeleteTargetGroup",
-      "elasticloadbalancing:ModifyListener",
-      "elasticloadbalancing:ModifyLoadBalancerAttributes",
-      "elasticloadbalancing:ModifyRule",
-      "elasticloadbalancing:ModifyTargetGroup",
-      "elasticloadbalancing:ModifyTargetGroupAttributes",
-      "elasticloadbalancing:RegisterTargets",
-      "elasticloadbalancing:DeregisterTargets",
-      "elasticloadbalancing:RemoveTags",
-      "elasticloadbalancing:SetIpAddressType",
-      "elasticloadbalancing:SetSecurityGroups",
-      "elasticloadbalancing:SetSubnets"
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowTerraformEcsAccess"
-    effect = "Allow"
-
-    actions = [
-      "ecs:CreateCluster",
-      "ecs:DeleteCluster",
-      "ecs:CreateService",
-      "ecs:DeleteService",
-      "ecs:UpdateService",
-      "ecs:RegisterTaskDefinition",
-      "ecs:DeregisterTaskDefinition",
-      "ecs:TagResource",
-      "ecs:UntagResource"
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowTerraformLogsAccess"
-    effect = "Allow"
-
-    actions = [
-      "logs:CreateLogGroup",
-      "logs:DeleteLogGroup",
-      "logs:PutRetentionPolicy",
-      "logs:DeleteRetentionPolicy",
-      "logs:TagResource",
-      "logs:UntagResource"
-    ]
-
-    resources = [
-      "arn:aws:logs:${var.aws_region}:066506852481:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-dev*"
-    ]
-  }
-
-  statement {
-    sid    = "AllowTerraformEcrAccess"
-    effect = "Allow"
-
-    actions = [
-      "ecr:CreateRepository",
-      "ecr:DeleteRepository",
-      "ecr:PutLifecyclePolicy",
-      "ecr:DeleteLifecyclePolicy",
-      "ecr:PutImageScanningConfiguration",
-      "ecr:PutImageTagMutability",
-      "ecr:TagResource",
-      "ecr:UntagResource"
-    ]
-
-    resources = [
-      "arn:aws:ecr:${var.aws_region}:066506852481:repository/terraform-aws-ecs-multi-env-platform*"
-    ]
-  }
-
-  statement {
-    sid    = "AllowTerraformAppAutoScalingAccess"
-    effect = "Allow"
-
-    actions = [
-      "application-autoscaling:RegisterScalableTarget",
-      "application-autoscaling:DeregisterScalableTarget",
-      "application-autoscaling:PutScalingPolicy",
-      "application-autoscaling:DeleteScalingPolicy",
-      "application-autoscaling:TagResource",
-      "application-autoscaling:UntagResource",
-      "cloudwatch:PutMetricAlarm",
-      "cloudwatch:DeleteAlarms"
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowTerraformPassOnlyProjectRoles"
-    effect = "Allow"
-
-    actions = [
-      "iam:PassRole"
-    ]
-
-    resources = [
-      "arn:aws:iam::066506852481:role/terraform-aws-ecs-multi-env-platform-dev-*"
-    ]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values = [
-        "ecs.amazonaws.com",
-        "ecs-tasks.amazonaws.com"
-      ]
-    }
-  }
-
-  statement {
-    sid    = "AllowTerraformManageOnlyProjectRoles"
-    effect = "Allow"
-
-    actions = [
-      "iam:CreateRole",
-      "iam:DeleteRole",
-      "iam:AttachRolePolicy",
-      "iam:DetachRolePolicy",
-      "iam:PutRolePolicy",
-      "iam:DeleteRolePolicy",
-      "iam:TagRole",
-      "iam:UntagRole",
-      "iam:UpdateAssumeRolePolicy"
-    ]
-
-    resources = [
-      "arn:aws:iam::066506852481:role/terraform-aws-ecs-multi-env-platform-dev-*"
-    ]
-  }
-
-  statement {
-    sid    = "AllowTerraformCreateServiceLinkedRoles"
-    effect = "Allow"
-
-    actions = [
-      "iam:CreateServiceLinkedRole"
-    ]
-
-    resources = ["*"]
-
-    condition {
-      test     = "StringEquals"
-      variable = "iam:AWSServiceName"
-      values = [
-        "ecs.amazonaws.com",
-        "ecs.application-autoscaling.amazonaws.com",
-        "elasticloadbalancing.amazonaws.com"
-      ]
-    }
-  }
-}
-
-data "aws_iam_policy_document" "terraform_prod_permissions" {
-  statement {
-    sid    = "AllowStsCallerIdentity"
-    effect = "Allow"
-
-    actions   = ["sts:GetCallerIdentity"]
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowStateBucketList"
-    effect = "Allow"
-
-    actions = [
-      "s3:ListBucket",
-      "s3:GetBucketLocation"
-    ]
-
-    resources = ["arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1"]
-  }
-
-  statement {
-    sid    = "AllowProdStateObjectAccess"
-    effect = "Allow"
-
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject"
-    ]
-
-    resources = [
-      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/prod/terraform.tfstate",
-      "arn:aws:s3:::heinzawhtoo-tf-state-066506852481-apse1/envs/prod/terraform.tfstate.tflock"
-    ]
+    resources = local.dev_state_object_arns
   }
 
   statement {
@@ -510,9 +251,7 @@ data "aws_iam_policy_document" "terraform_prod_permissions" {
       "logs:UntagResource"
     ]
 
-    resources = [
-      "arn:aws:logs:${var.aws_region}:066506852481:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-prod*"
-    ]
+    resources = [local.dev_logs_arn]
   }
 
   statement {
@@ -530,9 +269,7 @@ data "aws_iam_policy_document" "terraform_prod_permissions" {
       "ecr:UntagResource"
     ]
 
-    resources = [
-      "arn:aws:ecr:${var.aws_region}:066506852481:repository/terraform-aws-ecs-multi-env-platform*"
-    ]
+    resources = [local.ecr_repo_arn]
   }
 
   statement {
@@ -561,9 +298,7 @@ data "aws_iam_policy_document" "terraform_prod_permissions" {
       "iam:PassRole"
     ]
 
-    resources = [
-      "arn:aws:iam::066506852481:role/terraform-aws-ecs-multi-env-platform-prod-*"
-    ]
+    resources = [local.dev_role_pattern_arn]
 
     condition {
       test     = "StringEquals"
@@ -591,9 +326,287 @@ data "aws_iam_policy_document" "terraform_prod_permissions" {
       "iam:UpdateAssumeRolePolicy"
     ]
 
-    resources = [
-      "arn:aws:iam::066506852481:role/terraform-aws-ecs-multi-env-platform-prod-*"
+    resources = [local.dev_role_pattern_arn]
+  }
+
+  statement {
+    sid    = "AllowTerraformCreateServiceLinkedRoles"
+    effect = "Allow"
+
+    actions = [
+      "iam:CreateServiceLinkedRole"
     ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values = [
+        "ecs.amazonaws.com",
+        "ecs.application-autoscaling.amazonaws.com",
+        "elasticloadbalancing.amazonaws.com"
+      ]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "terraform_prod_permissions" {
+  statement {
+    sid    = "AllowStsCallerIdentity"
+    effect = "Allow"
+
+    actions = [
+      "sts:GetCallerIdentity"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowStateBucketList"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation"
+    ]
+
+    resources = [local.tf_state_bucket_arn]
+  }
+
+  statement {
+    sid    = "AllowProdStateObjectAccess"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
+    ]
+
+    resources = local.prod_state_object_arns
+  }
+
+  statement {
+    sid    = "AllowTerraformAwsReadAccess"
+    effect = "Allow"
+
+    actions = [
+      "ec2:DescribeAccountAttributes",
+      "ec2:DescribeAddresses",
+      "ec2:DescribeAvailabilityZones",
+      "ec2:DescribeInternetGateways",
+      "ec2:DescribeManagedPrefixLists",
+      "ec2:DescribeNatGateways",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DescribeRouteTables",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeTags",
+      "ec2:DescribeVpcs",
+      "ec2:DescribeVpcAttribute",
+      "elasticloadbalancing:Describe*",
+      "ecs:Describe*",
+      "ecs:List*",
+      "ecr:DescribeRepositories",
+      "ecr:DescribeImages",
+      "ecr:ListTagsForResource",
+      "ecr:GetAuthorizationToken",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams",
+      "logs:ListTagsForResource",
+      "iam:GetRole",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "application-autoscaling:Describe*",
+      "cloudwatch:DescribeAlarms",
+      "ec2:DescribeAddressesAttribute"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowTerraformEc2NetworkingWrite"
+    effect = "Allow"
+
+    actions = [
+      "ec2:AllocateAddress",
+      "ec2:AssociateRouteTable",
+      "ec2:AttachInternetGateway",
+      "ec2:CreateInternetGateway",
+      "ec2:CreateNatGateway",
+      "ec2:CreateRoute",
+      "ec2:CreateRouteTable",
+      "ec2:CreateSecurityGroup",
+      "ec2:CreateSubnet",
+      "ec2:CreateTags",
+      "ec2:CreateVpc",
+      "ec2:DeleteInternetGateway",
+      "ec2:DeleteNatGateway",
+      "ec2:DeleteRoute",
+      "ec2:DeleteRouteTable",
+      "ec2:DeleteSecurityGroup",
+      "ec2:DeleteSubnet",
+      "ec2:DeleteTags",
+      "ec2:DeleteVpc",
+      "ec2:DetachInternetGateway",
+      "ec2:DisassociateRouteTable",
+      "ec2:ModifySubnetAttribute",
+      "ec2:ModifyVpcAttribute",
+      "ec2:ReleaseAddress",
+      "ec2:ReplaceRoute",
+      "ec2:RevokeSecurityGroupEgress",
+      "ec2:RevokeSecurityGroupIngress",
+      "ec2:AuthorizeSecurityGroupEgress",
+      "ec2:AuthorizeSecurityGroupIngress"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowTerraformAlbAccess"
+    effect = "Allow"
+
+    actions = [
+      "elasticloadbalancing:AddTags",
+      "elasticloadbalancing:CreateListener",
+      "elasticloadbalancing:CreateLoadBalancer",
+      "elasticloadbalancing:CreateRule",
+      "elasticloadbalancing:CreateTargetGroup",
+      "elasticloadbalancing:DeleteListener",
+      "elasticloadbalancing:DeleteLoadBalancer",
+      "elasticloadbalancing:DeleteRule",
+      "elasticloadbalancing:DeleteTargetGroup",
+      "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:ModifyLoadBalancerAttributes",
+      "elasticloadbalancing:ModifyRule",
+      "elasticloadbalancing:ModifyTargetGroup",
+      "elasticloadbalancing:ModifyTargetGroupAttributes",
+      "elasticloadbalancing:RegisterTargets",
+      "elasticloadbalancing:DeregisterTargets",
+      "elasticloadbalancing:RemoveTags",
+      "elasticloadbalancing:SetIpAddressType",
+      "elasticloadbalancing:SetSecurityGroups",
+      "elasticloadbalancing:SetSubnets"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowTerraformEcsAccess"
+    effect = "Allow"
+
+    actions = [
+      "ecs:CreateCluster",
+      "ecs:DeleteCluster",
+      "ecs:CreateService",
+      "ecs:DeleteService",
+      "ecs:UpdateService",
+      "ecs:RegisterTaskDefinition",
+      "ecs:DeregisterTaskDefinition",
+      "ecs:TagResource",
+      "ecs:UntagResource"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowTerraformLogsAccess"
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:TagResource",
+      "logs:UntagResource"
+    ]
+
+    resources = [local.prod_logs_arn]
+  }
+
+  statement {
+    sid    = "AllowTerraformEcrAccess"
+    effect = "Allow"
+
+    actions = [
+      "ecr:CreateRepository",
+      "ecr:DeleteRepository",
+      "ecr:PutLifecyclePolicy",
+      "ecr:DeleteLifecyclePolicy",
+      "ecr:PutImageScanningConfiguration",
+      "ecr:PutImageTagMutability",
+      "ecr:TagResource",
+      "ecr:UntagResource"
+    ]
+
+    resources = [local.ecr_repo_arn]
+  }
+
+  statement {
+    sid    = "AllowTerraformAppAutoScalingAccess"
+    effect = "Allow"
+
+    actions = [
+      "application-autoscaling:RegisterScalableTarget",
+      "application-autoscaling:DeregisterScalableTarget",
+      "application-autoscaling:PutScalingPolicy",
+      "application-autoscaling:DeleteScalingPolicy",
+      "application-autoscaling:TagResource",
+      "application-autoscaling:UntagResource",
+      "cloudwatch:PutMetricAlarm",
+      "cloudwatch:DeleteAlarms"
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowTerraformPassOnlyProjectRoles"
+    effect = "Allow"
+
+    actions = [
+      "iam:PassRole"
+    ]
+
+    resources = [local.prod_role_pattern_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values = [
+        "ecs.amazonaws.com",
+        "ecs-tasks.amazonaws.com"
+      ]
+    }
+  }
+
+  statement {
+    sid    = "AllowTerraformManageOnlyProjectRoles"
+    effect = "Allow"
+
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:UpdateAssumeRolePolicy"
+    ]
+
+    resources = [local.prod_role_pattern_arn]
   }
 
   statement {
