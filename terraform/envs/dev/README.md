@@ -1,213 +1,58 @@
-# terraform-aws-ecs-multi-env-platform
+# dev environment
 
-A practical Terraform + GitHub Actions + AWS showcase project for building a multi-environment ECS platform with separate **dev** and **prod** environments.
+This folder is the Terraform root for the **dev** environment.
 
-> Current repo state: **Phase 4 is in progress.**
->
-> The repository already contains Terraform for the platform foundation **and** ECS application infrastructure (ECR, task execution role, task definition, and ECS service), but the committed GitHub Actions workflow is still focused on Terraform validation and planning only.
+It composes the shared modules under `terraform/modules` to create the dev platform and ECS application stack.
 
 ---
 
-## What this repository currently contains
+## What dev currently provisions
 
-### Infrastructure and platform
-- GitHub Actions OIDC authentication for AWS
-- Separate Terraform CI roles for **dev** and **prod**
-- Remote Terraform state in S3
-- Separate Terraform roots for **dev** and **prod**
-- Reusable Terraform modules
-
-### AWS resources currently modeled in Terraform
+At the current repo state, dev includes:
 - VPC
-- Public and private subnets
-- Optional NAT gateway
-- Security groups
+- public and private subnets
+- internet gateway
+- optional NAT gateway
+- security groups
 - CloudWatch log group
 - ECS cluster
-- Application Load Balancer
+- ALB and target group
 - ECR repository
 - ECS task execution role
 - ECS task definition
 - ECS service
 
-### Application code
-- A small FastAPI sample app under `app/`
-- A Dockerfile for containerizing the sample app
+That means dev is no longer just “Phase 3 base platform only”.
 
 ---
 
-## What is not finished yet
+## Key files
 
-This repo is **not** a polished end-to-end production delivery system yet.
-
-What is still incomplete or still needs repo cleanup:
-- GitHub Actions is still only running Terraform CI
-- There is no committed application image build-and-push workflow yet
-- There is no committed ECS application deployment workflow yet
-- The backend configuration has been refactored away from an account-specific hard-coded bucket, so local and CI usage should clearly document how backend bucket values are supplied
-- Some docs previously described the repo as “Phase 3 only”; that is no longer accurate
-
-That is fine. Honest repos age better than fake-finished repos.
+- `backend.tf` — backend skeleton for the dev state key
+- `providers.tf` — provider configuration
+- `locals.tf` — shared local values and common tags
+- `main.tf` — composes the dev stack
+- `variables.tf` — environment inputs
+- `outputs.tf` — useful outputs
+- `dev.tfvars` — concrete dev values
+- `dev.tfvars.example` — example values for bootstrapping or sharing structure
 
 ---
 
-## Repository structure
+## Backend note
 
-```text
-.
-├── .github/
-│   └── workflows/
-│       └── terraform-ci.yml
-├── app/
-│   ├── app.py
-│   ├── Dockerfile
-│   └── requirements.txt
-├── terraform/
-│   ├── bootstrap/
-│   │   ├── backend/
-│   │   ├── oidc/
-│   │   ├── terraform-ci-roles/
-│   │   └── README.md
-│   ├── envs/
-│   │   ├── dev/
-│   │   └── prod/
-│   └── modules/
-│       ├── alb/
-│       ├── cloudwatch_logs/
-│       ├── ecr/
-│       ├── ecs_cluster/
-│       ├── ecs_service/
-│       ├── ecs_task_definition/
-│       ├── ecs_task_execution_role/
-│       ├── platform/
-│       ├── security_groups/
-│       └── vpc/
-└── README.md
-```
+The backend bucket is intentionally **not** hard-coded in `backend.tf`.
 
----
+That means you should provide the bucket during init.
 
-## Bootstrap vs environment roots
-
-This repo uses multiple Terraform roots on purpose.
-
-### Bootstrap roots
-Run these only for account-level control-plane setup:
-
-- `terraform/bootstrap/oidc`
-- `terraform/bootstrap/backend`
-- `terraform/bootstrap/terraform-ci-roles`
-
-### Environment roots
-Run these for environment infrastructure and ECS resources:
-
-- `terraform/envs/dev`
-- `terraform/envs/prod`
-
-### Do not run Terraform from
-- the repo root
-- `terraform/`
-- `terraform/modules/*`
-
-Those are not deployable roots.
-
----
-
-## Recommended execution order in a fresh AWS account
-
-When standing up this repo in a new AWS account, use this order:
-
-1. `terraform/bootstrap/oidc`
-2. `terraform/bootstrap/backend`
-3. `terraform/bootstrap/terraform-ci-roles`
-4. `terraform/envs/dev`
-5. `terraform/envs/prod`
-
-If you already have a GitHub OIDC provider in the account, import it instead of blindly trying to create a duplicate one.
-
----
-
-## Backend behavior
-
-The environment backend configuration is intentionally split so the repo does **not** hard-code an AWS account specific S3 bucket name inside `backend.tf`.
-
-That means local usage should provide the bucket name at init time.
-
-Example for **dev**:
-
+Example:
 ```bash
 cd terraform/envs/dev
 terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
-terraform plan -var-file="dev.tfvars"
 ```
 
-Example for **prod**:
-
+Then run:
 ```bash
-cd terraform/envs/prod
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
-terraform plan -var-file="prod.tfvars"
-```
-
-If you prefer, you can also supply the bucket through a local `.tfbackend` file that is kept out of version control.
-
----
-
-## Current CI/CD state
-
-The committed workflow in `.github/workflows/terraform-ci.yml` currently handles Terraform CI for **dev** and **prod**:
-- AWS credential setup through OIDC
-- `terraform init`
-- `terraform fmt -check`
-- `terraform validate`
-- `terraform plan`
-
-That workflow still needs to be aligned with the partial backend configuration approach if the backend bucket is no longer hard-coded.
-
----
-
-## Environments
-
-### Dev
-Use dev for:
-- iteration
-- testing
-- low-risk infrastructure changes
-- cheaper experimentation
-
-### Prod
-Use prod for:
-- production-style separation
-- stricter review
-- closer-to-real-world settings
-
-Each environment has its own:
-- Terraform root
-- state key
-- tfvars file
-- IAM role used by CI
-
----
-
-## App folder
-
-The `app/` directory contains a small FastAPI app used as the sample ECS workload for this project.
-
-It is intentionally simple:
-- `/health` returns health and environment info
-- `/api/cidr` calculates CIDR details
-- `/` serves a tiny HTML UI
-
-This keeps the repo focused on platform delivery while still having a real container target.
-
----
-
-## Practical day-to-day commands
-
-### Dev
-```bash
-cd terraform/envs/dev
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
 terraform fmt -check
 terraform validate
 terraform plan -var-file="dev.tfvars"
@@ -223,40 +68,67 @@ Destroy:
 terraform destroy -var-file="dev.tfvars"
 ```
 
-### Prod
-```bash
-cd terraform/envs/prod
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
-terraform fmt -check
-terraform validate
-terraform plan -var-file="prod.tfvars"
-```
-
-Apply:
-```bash
-terraform apply -var-file="prod.tfvars"
-```
-
-Destroy:
-```bash
-terraform destroy -var-file="prod.tfvars"
-```
+If you prefer, you can store the bucket value in a local `.tfbackend` file that is not committed.
 
 ---
 
-## Cost and safety guidance
+## What to edit here
 
-- Keep the backend bucket persistent
-- Keep bootstrap resources persistent unless you are intentionally rebuilding the control plane
-- Destroy expensive runtime infrastructure when idle if this is still a showcase/lab environment
-- Review prod plans more carefully than dev plans
-- Do not trust old README text after large Terraform refactors unless it has been refreshed
+Edit this folder when you want to change dev-specific settings such as:
+- CIDR ranges
+- availability zones
+- NAT behavior
+- ALB ingress CIDRs
+- app port
+- health check path
+- task CPU and memory
+- desired ECS service count
+- log retention
+- container environment variables
+- ECR force delete behavior
+- short naming prefixes
+
+If the change should affect both environments, edit the shared module instead.
 
 ---
 
-## Suggested next documentation follow-up
+## CI backend behavior
 
-After this README refresh, the next good cleanup is:
-- align the Terraform CI workflow with backend bucket injection
-- document GitHub repository variables needed by CI
-- add an app build/deploy workflow and document it
+In GitHub Actions, the backend bucket is injected during `terraform init` using repository variables.
+
+Example:
+
+```bash
+terraform init -input=false -reconfigure \
+  -backend-config="bucket=${TF_STATE_BUCKET_NAME}" \
+  -backend-config="region=${AWS_REGION}"
+```
+This means CI does not depend on a developer's local backend file contents.
+
+---
+
+## Cost posture
+
+Dev is the place to be cheaper and faster to iterate.
+
+Typical dev choices can include:
+- fewer desired tasks
+- looser cost controls
+- NAT disabled when acceptable
+- shorter-lived infrastructure
+
+Just be explicit about those tradeoffs so the repo stays honest.
+
+---
+
+## Outputs you should expect
+
+Typical useful outputs from this environment include:
+- VPC details
+- subnet IDs
+- ALB details
+- ECS cluster details
+- ECR repository details
+- ECS service / task-related outputs where exposed
+
+Use outputs for integration, not guesswork.

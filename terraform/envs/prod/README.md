@@ -92,6 +92,21 @@ If the change should affect both environments, change the shared module instead.
 
 ---
 
+## CI backend behavior
+
+In GitHub Actions, the backend bucket is injected during `terraform init` using repository variables.
+
+Example:
+
+```bash
+terraform init -input=false -reconfigure \
+  -backend-config="bucket=${TF_STATE_BUCKET_NAME}" \
+  -backend-config="region=${AWS_REGION}"
+```
+This means CI does not depend on a developer's local backend file contents.
+  
+---
+
 ## Safety posture
 
 Prod should be treated more carefully than dev.

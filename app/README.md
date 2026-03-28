@@ -1,93 +1,63 @@
-# bootstrap terraform-ci-roles
+# app
 
-This Terraform root creates the GitHub Actions Terraform roles for **dev** and **prod**.
+This folder contains the sample application used as the container workload for the ECS platform.
 
----
-
-## What it does
-
-This root is responsible for:
-- looking up the existing GitHub OIDC provider
-- creating the Terraform CI IAM role for **dev**
-- creating the Terraform CI IAM role for **prod**
-- granting backend S3 bucket access
-- granting the AWS permissions needed for the current Terraform-managed infrastructure
+The app is intentionally small, because the repo is mainly about the infrastructure and delivery pattern.
 
 ---
 
-## What permissions it is expected to cover
+## What is inside
 
-At the current repo state, CI needs permissions related to:
-- VPC and subnet resources
-- security groups
-- load balancer resources
-- ECS cluster
-- ECR
-- ECS task execution role management
-- ECS task definition and ECS service operations
-- CloudWatch Logs
-- selected IAM role management for project-scoped roles
-- application autoscaling-related resources where applicable
+- `app.py` — FastAPI application
+- `requirements.txt` — Python dependencies
+- `Dockerfile` — image build definition
 
 ---
 
-## Input
+## What the app does
 
-This root should be parameterized by the Terraform state bucket name.
+The sample app currently exposes:
+- `/health` — health response with host and environment
+- `/api/cidr?cidr=...` — CIDR calculator endpoint
+- `/` — small HTML front end
 
-Example:
+That makes it more useful than a meaningless hello-world container while still staying simple.
+
+---
+
+## Run locally with Python
+
+From the `app/` folder:
+
 ```bash
-terraform plan -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
-terraform apply -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 3000
 ```
 
-That is better than hard-coding old account-specific S3 ARNs into policy documents.
-
----
-
-## Commands
-
-Run from this folder:
-
-```bash
-cd terraform/bootstrap/terraform-ci-roles
-terraform init
-terraform fmt -check
-terraform validate
-terraform plan -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
-```
-
-Apply:
-```bash
-terraform apply -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
+Then open:
+```text
+http://localhost:3000
 ```
 
 ---
 
-## Why it is separate
+## Run with Docker
 
-This root is intentionally separate from `terraform/envs/*` because:
-- CI roles are control-plane resources
-- environment roots should assume CI roles already exist
-- mixing IAM bootstrap and application infrastructure in one root becomes messy fast
+From the `app/` folder:
 
----
-
-## Important caution
-
-A bad change here can break:
-- GitHub Actions authentication
-- Terraform plan/apply in CI
-- remote state access
-- both environments at once
-
-So yes, this folder deserves paranoia.
+```bash
+docker build -t cidr-buddy .
+docker run --rm -p 3000:3000 cidr-buddy
+```
 
 ---
 
-## Relationship to the rest of the repo
+## Why this exists in the repo
 
-- `bootstrap/oidc` enables GitHub OIDC
-- `bootstrap/backend` creates the remote state bucket
-- `bootstrap/terraform-ci-roles` gives CI the right roles and permissions
-- `envs/dev` and `envs/prod` use those roles to manage infrastructure
+This app gives the Terraform and ECS layers a real workload target:
+- image source
+- container port
+- health endpoint
+- sample environment behavior
+
+That keeps the project grounded in something deployable instead of being infrastructure for infrastructure’s sake.

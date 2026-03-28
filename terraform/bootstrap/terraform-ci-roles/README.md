@@ -45,6 +45,27 @@ That is better than hard-coding old account-specific S3 ARNs into policy documen
 
 ---
 
+## Relationship to GitHub repository variables
+
+After applying this root, copy the resulting CI role ARNs into the repository variables used by GitHub Actions.
+
+Expected repository variables:
+
+- `AWS_REGION`
+- `TF_STATE_BUCKET_NAME`
+- `AWS_TERRAFORM_DEV_ROLE_ARN`
+- `AWS_TERRAFORM_PROD_ROLE_ARN`
+
+The Terraform CI workflow uses these variables to:
+
+- assume the correct dev or prod IAM role
+- select the correct AWS region
+- inject the backend S3 bucket during `terraform init`
+
+This keeps the workflow account-aware without hard-coding account-specific values into the workflow itself.
+
+---
+
 ## Commands
 
 Run from this folder:

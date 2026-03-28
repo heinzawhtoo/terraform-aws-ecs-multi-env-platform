@@ -166,6 +166,49 @@ That workflow still needs to be aligned with the partial backend configuration a
 
 ---
 
+## GitHub Actions CI configuration
+
+The Terraform CI workflow uses GitHub OIDC plus repository variables.
+
+### Required GitHub repository variables
+
+Set these under:
+
+`Settings -> Secrets and variables -> Actions -> Variables`
+
+Required variables:
+
+- `AWS_REGION`  
+  Example: `ap-southeast-1`
+
+- `TF_STATE_BUCKET_NAME`  
+  Example: `heinzawhtoo-tf-state-091234567891-apse1`
+
+- `AWS_TERRAFORM_DEV_ROLE_ARN`  
+  ARN of the dev Terraform CI role created by `terraform/bootstrap/terraform-ci-roles`
+
+- `AWS_TERRAFORM_PROD_ROLE_ARN`  
+  ARN of the prod Terraform CI role created by `terraform/bootstrap/terraform-ci-roles`
+
+### Why the workflow injects backend config
+
+The environment roots keep a backend skeleton in `backend.tf`, but the CI workflow injects the backend bucket during `terraform init`:
+
+```bash
+terraform init -input=false -reconfigure \
+  -backend-config="bucket=${TF_STATE_BUCKET_NAME}" \
+  -backend-config="region=${AWS_REGION}"
+```
+This avoids hard-coding account-specific backend values into the workflow logic and keeps account migration cleaner
+
+### Local vs CI behavior
+
+- Local runs may still use backend.s3.tfbackend
+- CI does not rely on local developer files for backend bucket selection
+- CI always uses the GitHub repository variables above
+
+---
+
 ## Environments
 
 ### Dev
@@ -251,3 +294,4 @@ terraform destroy -var-file="prod.tfvars"
 - Destroy expensive runtime infrastructure when idle if this is still a showcase/lab environment
 - Review prod plans more carefully than dev plans
 - Do not trust old README text after large Terraform refactors unless it has been refreshed
+
