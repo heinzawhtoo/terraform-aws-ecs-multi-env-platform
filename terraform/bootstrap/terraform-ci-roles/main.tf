@@ -22,7 +22,7 @@ locals {
     "${local.tf_state_bucket_arn}/envs/prod/terraform.tfstate.tflock",
   ]
 
-  dev_logs_arn = "arn:${local.partition}:logs:${var.aws_region}:${local.account_id}:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-dev*"
+  dev_logs_arn  = "arn:${local.partition}:logs:${var.aws_region}:${local.account_id}:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-dev*"
   prod_logs_arn = "arn:${local.partition}:logs:${var.aws_region}:${local.account_id}:log-group:/aws/ecs/terraform-aws-ecs-multi-env-platform-prod*"
 
   ecr_repo_arn = "arn:${local.partition}:ecr:${var.aws_region}:${local.account_id}:repository/terraform-aws-ecs-multi-env-platform*"
