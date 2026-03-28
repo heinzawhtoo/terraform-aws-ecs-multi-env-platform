@@ -12,3 +12,8 @@ output "app_dev_role_arn" {
   description = "IAM role ARN for GitHub Actions dev app image build"
   value       = aws_iam_role.app_dev.arn
 }
+
+output "app_prod_role_arn" {
+  description = "IAM role ARN for GitHub Actions prod app image build/deploy"
+  value       = aws_iam_role.app_prod.arn
+}

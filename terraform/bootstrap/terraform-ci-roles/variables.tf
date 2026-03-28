@@ -44,3 +44,9 @@ variable "app_dev_role_name" {
   type        = string
   default     = "github-actions-app-dev"
 }
+
+variable "app_prod_role_name" {
+  description = "IAM role name for GitHub Actions prod app image build/deploy"
+  type        = string
+  default     = "github-actions-app-prod"
+}
