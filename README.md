@@ -2,9 +2,13 @@
 
 A practical Terraform + GitHub Actions + AWS showcase project for building a multi-environment ECS platform with separate **dev** and **prod** environments.
 
-> Current repo state: **Phase 4 is in progress.**
+> Current repo state: **Phase 4 is implemented in the repository and runtime validation is in progress.**
 >
-> The repository already contains Terraform for the platform foundation **and** ECS application infrastructure (ECR, task execution role, task definition, and ECS service), but the committed GitHub Actions workflow is still focused on Terraform validation and planning only.
+> The repo now contains:
+> - Terraform for the shared AWS platform foundation
+> - Terraform for ECS application infrastructure
+> - GitHub Actions Terraform CI for **dev** and **prod**
+> - GitHub Actions application build / push / deploy workflows for **dev** and **prod**
 
 ---
 
@@ -13,6 +17,7 @@ A practical Terraform + GitHub Actions + AWS showcase project for building a mul
 ### Infrastructure and platform
 - GitHub Actions OIDC authentication for AWS
 - Separate Terraform CI roles for **dev** and **prod**
+- Separate GitHub Actions app delivery roles for **dev** and **prod**
 - Remote Terraform state in S3
 - Separate Terraform roots for **dev** and **prod**
 - Reusable Terraform modules
@@ -34,20 +39,40 @@ A practical Terraform + GitHub Actions + AWS showcase project for building a mul
 - A small FastAPI sample app under `app/`
 - A Dockerfile for containerizing the sample app
 
+### CI/CD workflows
+- Terraform format / validate / plan workflow for **dev** and **prod**
+- Dev application build / push / deploy workflow
+- Prod application build / push / deploy workflow
+
 ---
 
-## What is not finished yet
+## What Phase 4 covers
 
-This repo is **not** a polished end-to-end production delivery system yet.
+Phase 4 in this repo means the platform can now do the full app delivery path:
 
-What is still incomplete or still needs repo cleanup:
-- GitHub Actions is still only running Terraform CI
-- There is no committed application image build-and-push workflow yet
-- There is no committed ECS application deployment workflow yet
-- The backend configuration has been refactored away from an account-specific hard-coded bucket, so local and CI usage should clearly document how backend bucket values are supplied
-- Some docs previously described the repo as “Phase 3 only”; that is no longer accurate
+1. provision AWS infrastructure with Terraform
+2. build the sample app container image
+3. push the image to Amazon ECR
+4. trigger ECS service deployment from GitHub Actions
+5. wait for ECS service stability after rollout
 
-That is fine. Honest repos age better than fake-finished repos.
+One important design choice: **Terraform owns service scaling**, while the app workflows handle **build, push, and rollout**. The app deploy workflows do not change ECS desired count.
+
+---
+
+## What is still not finished yet
+
+This repo is **not** pretending to be a fully hardened production platform yet.
+
+Things that still belong in later phases:
+- tighter least-privilege scoping for app deploy permissions
+- task-definition rendering or explicit image tag promotion workflows
+- approvals / protected environments for prod promotion
+- deeper observability, alarms, dashboards, and runbooks
+- secrets management for real application configuration
+- custom domain / TLS / Route 53 integration if desired
+
+That is normal. Good infrastructure is layered, not imagined into existence.
 
 ---
 
@@ -57,6 +82,8 @@ That is fine. Honest repos age better than fake-finished repos.
 .
 ├── .github/
 │   └── workflows/
+│       ├── app-build-dev.yml
+│       ├── app-build-prod.yml
 │       └── terraform-ci.yml
 ├── app/
 │   ├── app.py
@@ -123,13 +150,13 @@ When standing up this repo in a new AWS account, use this order:
 4. `terraform/envs/dev`
 5. `terraform/envs/prod`
 
-If you already have a GitHub OIDC provider in the account, import it instead of blindly trying to create a duplicate one.
+If you already have a GitHub OIDC provider in the account, import it instead of trying to create a duplicate one.
 
 ---
 
 ## Backend behavior
 
-The environment backend configuration is intentionally split so the repo does **not** hard-code an AWS account specific S3 bucket name inside `backend.tf`.
+The environment backend configuration is intentionally split so the repo does **not** hard-code an AWS account-specific S3 bucket name inside `backend.tf`.
 
 That means local usage should provide the bucket name at init time.
 
@@ -137,7 +164,9 @@ Example for **dev**:
 
 ```bash
 cd terraform/envs/dev
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+terraform init -reconfigure \
+  -backend-config="bucket=YOUR_TF_STATE_BUCKET" \
+  -backend-config="region=YOUR_AWS_REGION"
 terraform plan -var-file="dev.tfvars"
 ```
 
@@ -145,30 +174,45 @@ Example for **prod**:
 
 ```bash
 cd terraform/envs/prod
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+terraform init -reconfigure \
+  -backend-config="bucket=YOUR_TF_STATE_BUCKET" \
+  -backend-config="region=YOUR_AWS_REGION"
 terraform plan -var-file="prod.tfvars"
 ```
 
-If you prefer, you can also supply the bucket through a local `.tfbackend` file that is kept out of version control.
+If you prefer, you can also supply the bucket through a local `.tfbackend` file that stays out of version control.
 
 ---
 
 ## Current CI/CD state
 
-The committed workflow in `.github/workflows/terraform-ci.yml` currently handles Terraform CI for **dev** and **prod**:
+### Terraform CI
+The committed workflow in `.github/workflows/terraform-ci.yml` handles Terraform CI for **dev** and **prod**:
+
 - AWS credential setup through OIDC
 - `terraform init`
 - `terraform fmt -check`
 - `terraform validate`
 - `terraform plan`
 
-That workflow still needs to be aligned with the partial backend configuration approach if the backend bucket is no longer hard-coded.
+### App delivery workflows
+The committed application workflows handle:
+
+- Docker image build
+- Amazon ECR login
+- image push to ECR
+- ECS service forced deployment
+- wait for ECS service stability
+
+Current workflow files:
+- `.github/workflows/app-build-dev.yml`
+- `.github/workflows/app-build-prod.yml`
 
 ---
 
-## GitHub Actions CI configuration
+## GitHub Actions CI/CD configuration
 
-The Terraform CI workflow uses GitHub OIDC plus repository variables.
+This repo uses GitHub OIDC plus repository variables.
 
 ### Required GitHub repository variables
 
@@ -178,17 +222,23 @@ Set these under:
 
 Required variables:
 
-- `AWS_REGION`  
+- `AWS_REGION`
   Example: `ap-southeast-1`
 
-- `TF_STATE_BUCKET_NAME`  
+- `TF_STATE_BUCKET_NAME`
   Example: `heinzawhtoo-tf-state-091234567891-apse1`
 
-- `AWS_TERRAFORM_DEV_ROLE_ARN`  
+- `AWS_TERRAFORM_DEV_ROLE_ARN`
   ARN of the dev Terraform CI role created by `terraform/bootstrap/terraform-ci-roles`
 
-- `AWS_TERRAFORM_PROD_ROLE_ARN`  
+- `AWS_TERRAFORM_PROD_ROLE_ARN`
   ARN of the prod Terraform CI role created by `terraform/bootstrap/terraform-ci-roles`
+
+- `AWS_APP_DEV_ROLE_ARN`
+  ARN of the dev app build/deploy role created by `terraform/bootstrap/terraform-ci-roles`
+
+- `AWS_APP_PROD_ROLE_ARN`
+  ARN of the prod app build/deploy role created by `terraform/bootstrap/terraform-ci-roles`
 
 ### Why the workflow injects backend config
 
@@ -199,12 +249,13 @@ terraform init -input=false -reconfigure \
   -backend-config="bucket=${TF_STATE_BUCKET_NAME}" \
   -backend-config="region=${AWS_REGION}"
 ```
-This avoids hard-coding account-specific backend values into the workflow logic and keeps account migration cleaner
+
+This avoids hard-coding account-specific backend values into workflow logic and makes account migration much cleaner.
 
 ### Local vs CI behavior
 
-- Local runs may still use backend.s3.tfbackend
-- CI does not rely on local developer files for backend bucket selection
+- Local runs may still use backend config files or direct `-backend-config`
+- CI does not rely on local developer files
 - CI always uses the GitHub repository variables above
 
 ---
@@ -228,7 +279,8 @@ Each environment has its own:
 - Terraform root
 - state key
 - tfvars file
-- IAM role used by CI
+- IAM role used by Terraform CI
+- IAM role used by app delivery workflows
 
 ---
 
@@ -247,17 +299,25 @@ This keeps the repo focused on platform delivery while still having a real conta
 
 ## Practical day-to-day commands
 
+### Bootstrap IAM roles
+```bash
+cd terraform/bootstrap/terraform-ci-roles
+terraform init
+terraform fmt
+terraform validate
+terraform plan -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
+terraform apply -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
+```
+
 ### Dev
 ```bash
 cd terraform/envs/dev
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+terraform init -reconfigure \
+  -backend-config="bucket=YOUR_TF_STATE_BUCKET" \
+  -backend-config="region=YOUR_AWS_REGION"
 terraform fmt -check
 terraform validate
 terraform plan -var-file="dev.tfvars"
-```
-
-Apply:
-```bash
 terraform apply -var-file="dev.tfvars"
 ```
 
@@ -269,14 +329,12 @@ terraform destroy -var-file="dev.tfvars"
 ### Prod
 ```bash
 cd terraform/envs/prod
-terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+terraform init -reconfigure \
+  -backend-config="bucket=YOUR_TF_STATE_BUCKET" \
+  -backend-config="region=YOUR_AWS_REGION"
 terraform fmt -check
 terraform validate
 terraform plan -var-file="prod.tfvars"
-```
-
-Apply:
-```bash
 terraform apply -var-file="prod.tfvars"
 ```
 
@@ -287,11 +345,45 @@ terraform destroy -var-file="prod.tfvars"
 
 ---
 
+## How deployments work right now
+
+### Dev
+- push to `main` with changes under `app/**`
+- GitHub Actions builds the container
+- GitHub Actions pushes the image to the dev ECR repository
+- GitHub Actions runs `aws ecs update-service --force-new-deployment`
+- GitHub Actions waits for the ECS service to become stable
+
+### Prod
+- run the prod workflow manually
+- build and push the prod image
+- trigger ECS rollout
+- wait for service stability
+
+This is deliberately simple and practical for a showcase project.
+
+---
+
 ## Cost and safety guidance
 
 - Keep the backend bucket persistent
 - Keep bootstrap resources persistent unless you are intentionally rebuilding the control plane
 - Destroy expensive runtime infrastructure when idle if this is still a showcase/lab environment
 - Review prod plans more carefully than dev plans
+- Keep prod deployment manual until later hardening phases
 - Do not trust old README text after large Terraform refactors unless it has been refreshed
 
+---
+
+## Phase 5 direction
+
+A strong next phase would be:
+
+- task-definition driven deploy workflow with explicit image tag promotion
+- prod approvals / protected environments
+- CloudWatch alarms and autoscaling validation
+- ECS Exec enablement and operational docs
+- optional HTTPS / ACM / Route 53
+- secrets injection through SSM Parameter Store or Secrets Manager
+
+That is where "works" starts turning into "solid".
