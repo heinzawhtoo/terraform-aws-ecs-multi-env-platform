@@ -45,6 +45,6 @@ container_environment = {
   APP_ENV = "dev"
 }
 
-service_desired_count             = 1
+service_desired_count             = 0
 enable_execute_command            = false
 health_check_grace_period_seconds = 60

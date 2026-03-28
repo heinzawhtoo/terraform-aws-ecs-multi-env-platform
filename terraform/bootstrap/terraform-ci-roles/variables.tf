@@ -38,3 +38,9 @@ variable "tf_state_bucket_name" {
   description = "S3 bucket name for Terraform remote state"
   type        = string
 }
+
+variable "app_dev_role_name" {
+  description = "IAM role name for GitHub Actions dev app image build"
+  type        = string
+  default     = "github-actions-app-dev"
+}

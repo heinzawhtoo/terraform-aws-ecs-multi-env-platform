@@ -642,3 +642,50 @@ resource "aws_iam_role_policy" "terraform_prod_permissions" {
   role   = aws_iam_role.terraform_prod.id
   policy = data.aws_iam_policy_document.terraform_prod_permissions.json
 }
+
+resource "aws_iam_role" "app_dev" {
+  name               = var.app_dev_role_name
+  assume_role_policy = data.aws_iam_policy_document.github_oidc_assume_role.json
+}
+
+data "aws_iam_policy_document" "app_dev_permissions" {
+  statement {
+    sid    = "AllowStsCallerIdentity"
+    effect = "Allow"
+
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowEcrAuthorizationToken"
+    effect = "Allow"
+
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AllowPushToDevAppRepository"
+    effect = "Allow"
+
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:CompleteLayerUpload",
+      "ecr:InitiateLayerUpload",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
+      "ecr:BatchGetImage"
+    ]
+
+    resources = [
+      "arn:aws:ecr:${var.aws_region}:066506852481:repository/terraform-aws-ecs-multi-env-platform-dev-app"
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "app_dev_permissions" {
+  name   = "${var.app_dev_role_name}-ecr-push"
+  role   = aws_iam_role.app_dev.id
+  policy = data.aws_iam_policy_document.app_dev_permissions.json
+}
