@@ -1,96 +1,102 @@
-# terraform-ci-roles bootstrap
+# terraform bootstrap
 
-## Purpose
+This folder contains the **bootstrap Terraform roots** for the project.
 
-This folder contains the Terraform configuration used to bootstrap the IAM and OIDC setup required for GitHub Actions to run Terraform against AWS.
-
-This is **bootstrap/control-plane setup**, not day-to-day environment infrastructure.
+These roots are different from `terraform/envs/dev` and `terraform/envs/prod` because they build the **control plane** for the rest of the repo.
 
 ---
 
-## What This Folder Creates
+## What lives here
 
-This bootstrap configuration is responsible for setting up:
+### `backend/`
+Creates the persistent S3 bucket used for Terraform remote state.
 
-- trust relationship with the existing GitHub OIDC provider
-- IAM role for Terraform CI in **dev**
-- IAM role for Terraform CI in **prod**
-- backend access permissions for the S3 Terraform state bucket
-- permissions needed to manage the current platform resources used by this project
+### `oidc/`
+Creates the GitHub Actions OIDC provider and a small test role/policy used to validate GitHub-to-AWS authentication.
 
-That includes permissions related to:
-
-- VPC and subnet resources
-- security groups
-- load balancer resources
-- ECS cluster and future ECS service operations
-- CloudWatch Logs
-- ECR-related operations
-- application autoscaling-related operations
-- selected IAM role management for project-scoped roles
+### `terraform-ci-roles/`
+Creates the IAM roles used by GitHub Actions Terraform CI for **dev** and **prod**, including access to the backend bucket and permissions needed for the project infrastructure.
 
 ---
 
-## Why This Is Separate
+## Why this is separate
 
-This folder is separated from `terraform/envs/*` on purpose.
+Bootstrap resources are foundational.
 
-Reason:
+They should not be mixed into the environment roots because that creates ugly dependency loops like:
+- CI needs roles before it can run Terraform
+- Terraform needs backend before it can use remote state
+- environments need bootstrap in place before they are safe to use in CI
 
-- bootstrap IAM/OIDC setup should not be mixed with day-to-day platform infrastructure
-- CI role creation is foundational
-- the env roots should assume the CI roles already exist
-
-This separation keeps the project cleaner and reduces the chance of circular setup problems.
-
----
-
-## When to Edit This Folder
-
-Edit this folder when you need to change:
-
-- GitHub org / repo / branch trust conditions
-- CI role names
-- AWS permissions granted to Terraform CI
-- backend bucket access policy scope
-- new permissions required by later project phases
-
-Do **not** edit this folder for normal environment tuning such as subnet CIDRs or ALB ingress rules. That belongs in `terraform/envs/dev` or `terraform/envs/prod`.
+Keeping bootstrap separate avoids that nonsense.
 
 ---
 
-## Operational Caution
+## Recommended order
 
-Changes in this folder affect the CI control plane.
+In a fresh AWS account, run bootstrap in this order:
 
-That means a bad change here can break:
+```bash
+cd terraform/bootstrap/oidc
+terraform init
+terraform plan
+terraform apply
+```
 
-- GitHub Actions authentication
-- Terraform plan/apply in CI
-- access to remote state
-- future platform deployments
+```bash
+cd ../backend
+terraform init
+terraform plan -var="bucket_name=YOUR_TF_STATE_BUCKET"
+terraform apply -var="bucket_name=YOUR_TF_STATE_BUCKET"
+```
 
-Treat changes here more carefully than ordinary module changes.
+```bash
+cd ../terraform-ci-roles
+terraform init
+terraform plan -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
+terraform apply -var="tf_state_bucket_name=YOUR_TF_STATE_BUCKET"
+```
+
+Then move on to:
+- `terraform/envs/dev`
+- `terraform/envs/prod`
 
 ---
 
-## Relationship to the Rest of the Repo
+## Important cautions
 
-- `bootstrap/terraform-ci-roles` sets up CI access
-- `envs/dev` and `envs/prod` use that access to manage infrastructure
-- `modules/*` contain the reusable infrastructure logic
+- These folders affect the account control plane
+- Bad changes here can break GitHub Actions authentication
+- Bad changes here can break Terraform remote state access
+- Bad changes here can break both dev and prod CI in one shot
 
-That is the intended layering.
+Treat bootstrap changes with more care than normal environment tuning.
 
 ---
 
-## Current Phase Context
+## What does **not** belong here
 
-At the current project stage, this bootstrap supports the Phase 3 platform foundation and also includes permissions that anticipate later phases such as:
+Do **not** edit bootstrap for:
+- subnet CIDRs
+- app port
+- ALB ingress rules
+- service desired count
+- environment-specific tuning
 
-- ECS service operations
-- ECR repository operations
-- application autoscaling operations
-- project-scoped IAM role management for ECS-related roles
+That belongs under:
+- `terraform/envs/dev`
+- `terraform/envs/prod`
 
-That is acceptable as long as the permissions remain intentional and reviewed.
+---
+
+## State behavior
+
+These bootstrap roots are intentionally separate from the environment backends.
+
+In practice:
+- `backend/` creates the persistent S3 bucket
+- `envs/dev` and `envs/prod` use that bucket for remote state
+- `terraform-ci-roles/` grants CI access to that bucket
+- `oidc/` enables GitHub Actions to assume AWS roles securely
+
+That layering is the whole point.

@@ -1,444 +1,253 @@
 # terraform-aws-ecs-multi-env-platform
 
-A phased **Terraform + GitHub Actions + AWS** showcase project for building a **multi-environment ECS platform** with separate **dev** and **prod** infrastructure.
+A practical Terraform + GitHub Actions + AWS showcase project for building a multi-environment ECS platform with separate **dev** and **prod** environments.
 
-> **Current status:** Phase 3 base platform infrastructure is complete.  
-> This repository currently provides the **Terraform foundation, CI workflow, remote state setup, and core AWS platform resources** needed for later ECS application deployment.
-
----
-
-## Overview
-
-This project is a practical, step-by-step build of an AWS platform using:
-
-- **Terraform** for infrastructure as code
-- **GitHub Actions** for CI
-- **AWS OIDC** for secure GitHub-to-AWS authentication
-- Separate **dev** and **prod** environments
-- Reusable Terraform **modules**
-- Remote Terraform state in **S3**
-
-The goal is to build a clean, realistic platform foundation first, then layer in application deployment, hardening, and operational improvements in later phases.
+> Current repo state: **Phase 4 is in progress.**
+>
+> The repository already contains Terraform for the platform foundation **and** ECS application infrastructure (ECR, task execution role, task definition, and ECS service), but the committed GitHub Actions workflow is still focused on Terraform validation and planning only.
 
 ---
 
-## Current Scope
+## What this repository currently contains
 
-### Implemented
-
-This repository currently includes:
-
-- AWS OIDC setup for GitHub Actions
+### Infrastructure and platform
+- GitHub Actions OIDC authentication for AWS
 - Separate Terraform CI roles for **dev** and **prod**
-- Remote Terraform state stored in **S3**
-- Environment-specific Terraform roots
+- Remote Terraform state in S3
+- Separate Terraform roots for **dev** and **prod**
 - Reusable Terraform modules
-- Base AWS platform infrastructure for both environments:
-  - VPC
-  - Public and private subnets
-  - NAT gateway support
-  - Security groups
-  - ECS cluster
-  - CloudWatch log group
-  - Application Load Balancer (ALB)
 
-### Planned Next
-
-The following are **not yet implemented** in the current public state of the repository:
-
-- ECR repository and image workflow
+### AWS resources currently modeled in Terraform
+- VPC
+- Public and private subnets
+- Optional NAT gateway
+- Security groups
+- CloudWatch log group
+- ECS cluster
+- Application Load Balancer
+- ECR repository
+- ECS task execution role
 - ECS task definition
 - ECS service
-- Application deployment pipeline
-- Path-based routing
-- Auto scaling
-- HTTPS with ACM
-- Additional production hardening and ops improvements
 
-This is intentional. The repo is being built in phases rather than pretending to be complete before the platform actually is.
+### Application code
+- A small FastAPI sample app under `app/`
+- A Dockerfile for containerizing the sample app
 
 ---
 
-## Project Roadmap
+## What is not finished yet
 
-The platform is being built in the following stages:
+This repo is **not** a polished end-to-end production delivery system yet.
 
-- **Phase 1** — AWS OIDC bootstrap
-- **Phase 2** — Terraform CI and remote backend
-- **Phase 3** — Base AWS platform infrastructure
-- **Phase 4** — ECS service, ECR, and deployment pipeline
-- **Phase 5** — Hardening, HTTPS, scaling, and operations polish
+What is still incomplete or still needs repo cleanup:
+- GitHub Actions is still only running Terraform CI
+- There is no committed application image build-and-push workflow yet
+- There is no committed ECS application deployment workflow yet
+- The backend configuration has been refactored away from an account-specific hard-coded bucket, so local and CI usage should clearly document how backend bucket values are supplied
+- Some docs previously described the repo as “Phase 3 only”; that is no longer accurate
 
-At the current stage, the most accurate description of this repo is:
-
-> **A multi-environment AWS platform foundation for future ECS application deployment**
+That is fine. Honest repos age better than fake-finished repos.
 
 ---
 
-## Repository Structure
+## Repository structure
 
 ```text
 .
 ├── .github/
 │   └── workflows/
 │       └── terraform-ci.yml
+├── app/
+│   ├── app.py
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── terraform/
 │   ├── bootstrap/
-│   │   └── terraform-ci-roles/
+│   │   ├── backend/
+│   │   ├── oidc/
+│   │   ├── terraform-ci-roles/
+│   │   └── README.md
 │   ├── envs/
 │   │   ├── dev/
-│   │   │   ├── backend.tf
-│   │   │   ├── dev.tfvars
-│   │   │   ├── main.tf
-│   │   │   ├── outputs.tf
-│   │   │   └── variables.tf
 │   │   └── prod/
-│   │       ├── backend.tf
-│   │       ├── main.tf
-│   │       ├── outputs.tf
-│   │       ├── prod.tfvars
-│   │       └── variables.tf
 │   └── modules/
 │       ├── alb/
 │       ├── cloudwatch_logs/
+│       ├── ecr/
 │       ├── ecs_cluster/
+│       ├── ecs_service/
+│       ├── ecs_task_definition/
+│       ├── ecs_task_execution_role/
+│       ├── platform/
 │       ├── security_groups/
 │       └── vpc/
-├── .gitignore
-└── LICENSE 
+└── README.md
 ```
+
+---
+
+## Bootstrap vs environment roots
+
+This repo uses multiple Terraform roots on purpose.
+
+### Bootstrap roots
+Run these only for account-level control-plane setup:
+
+- `terraform/bootstrap/oidc`
+- `terraform/bootstrap/backend`
+- `terraform/bootstrap/terraform-ci-roles`
+
+### Environment roots
+Run these for environment infrastructure and ECS resources:
+
+- `terraform/envs/dev`
+- `terraform/envs/prod`
+
+### Do not run Terraform from
+- the repo root
+- `terraform/`
+- `terraform/modules/*`
+
+Those are not deployable roots.
+
+---
+
+## Recommended execution order in a fresh AWS account
+
+When standing up this repo in a new AWS account, use this order:
+
+1. `terraform/bootstrap/oidc`
+2. `terraform/bootstrap/backend`
+3. `terraform/bootstrap/terraform-ci-roles`
+4. `terraform/envs/dev`
+5. `terraform/envs/prod`
+
+If you already have a GitHub OIDC provider in the account, import it instead of blindly trying to create a duplicate one.
+
+---
+
+## Backend behavior
+
+The environment backend configuration is intentionally split so the repo does **not** hard-code an AWS account specific S3 bucket name inside `backend.tf`.
+
+That means local usage should provide the bucket name at init time.
+
+Example for **dev**:
+
+```bash
+cd terraform/envs/dev
+terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+terraform plan -var-file="dev.tfvars"
+```
+
+Example for **prod**:
+
+```bash
+cd terraform/envs/prod
+terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
+terraform plan -var-file="prod.tfvars"
+```
+
+If you prefer, you can also supply the bucket through a local `.tfbackend` file that is kept out of version control.
+
+---
+
+## Current CI/CD state
+
+The committed workflow in `.github/workflows/terraform-ci.yml` currently handles Terraform CI for **dev** and **prod**:
+- AWS credential setup through OIDC
+- `terraform init`
+- `terraform fmt -check`
+- `terraform validate`
+- `terraform plan`
+
+That workflow still needs to be aligned with the partial backend configuration approach if the backend bucket is no longer hard-coded.
 
 ---
 
 ## Environments
 
-This project uses two isolated Terraform environments:
+### Dev
+Use dev for:
+- iteration
+- testing
+- low-risk infrastructure changes
+- cheaper experimentation
 
-- **dev** — used for testing, iteration, and lower-risk changes
-- **prod** — used for production-style separation and stricter environment boundaries
+### Prod
+Use prod for:
+- production-style separation
+- stricter review
+- closer-to-real-world settings
 
 Each environment has its own:
-
-- Terraform root configuration
-- `.tfvars` file
-- backend state key
-- GitHub Actions AWS role
-
-This keeps state, plan output, and environment behavior clearly separated.
+- Terraform root
+- state key
+- tfvars file
+- IAM role used by CI
 
 ---
 
-## CI/CD Approach
+## App folder
 
-GitHub Actions is used to run Terraform validation and planning for both environments.
+The `app/` directory contains a small FastAPI app used as the sample ECS workload for this project.
 
-### Current CI responsibilities
+It is intentionally simple:
+- `/health` returns health and environment info
+- `/api/cidr` calculates CIDR details
+- `/` serves a tiny HTML UI
 
-For each environment, CI runs:
-
-- `terraform fmt -check`
-- `terraform init`
-- `terraform validate`
-- `terraform plan`
-
-This gives a clean early warning system for formatting issues, configuration errors, and infrastructure changes before manual apply.
-
-### Authentication model
-
-This repository uses GitHub Actions OIDC to assume AWS IAM roles.
-
-That means:
-
-- no long-lived AWS access keys stored in GitHub secrets
-- separate AWS roles for dev and prod
-- cleaner and safer CI authentication
-
-That is the right direction. Static cloud credentials in CI are a bad habit and worth avoiding.
+This keeps the repo focused on platform delivery while still having a real container target.
 
 ---
 
-## Terraform Backend
-
-Terraform state is stored remotely in S3.
-
-### Backend design
-
-- Shared persistent S3 backend
-- Separate state keys for dev and prod
-- S3 lockfile-based locking
-- No DynamoDB lock table
-
-The backend bucket is intended to remain persistent even when environment infrastructure is destroyed.
-
-That separation matters because backend state storage is foundational, while environment resources are disposable.
-
----
-
-## Prerequisites
-
-Before using this repository, make sure you have:
-
-- Terraform installed
-- An AWS account
-- AWS IAM roles configured for GitHub OIDC
-- An S3 bucket for Terraform remote state
-- GitHub Actions variables/secrets configured where required
-- Appropriate AWS permissions for local Terraform use
-
-Recommended tools:
-
-- AWS CLI
-- Git
-- A separate AWS sandbox or careful IAM isolation for experimentation
-
----
-
-## Local Usage
+## Practical day-to-day commands
 
 ### Dev
-
 ```bash
 cd terraform/envs/dev
-terraform init
+terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
 terraform fmt -check
 terraform validate
 terraform plan -var-file="dev.tfvars"
 ```
-Apply:
 
+Apply:
 ```bash
 terraform apply -var-file="dev.tfvars"
 ```
-Destroy:
 
+Destroy:
 ```bash
 terraform destroy -var-file="dev.tfvars"
 ```
 
 ### Prod
-
 ```bash
 cd terraform/envs/prod
-terraform init
+terraform init -reconfigure -backend-config="bucket=YOUR_TF_STATE_BUCKET"
 terraform fmt -check
 terraform validate
 terraform plan -var-file="prod.tfvars"
 ```
-Apply:
 
+Apply:
 ```bash
 terraform apply -var-file="prod.tfvars"
 ```
 
 Destroy:
-
 ```bash
 terraform destroy -var-file="prod.tfvars"
 ```
 
 ---
 
-## Operational Guidance
-
-### What should stay persistent
-
-Keep the Terraform backend S3 bucket persistent.
-
-That bucket is part of your control plane and should not be treated like disposable runtime infrastructure.
-
-### What can be destroyed
-
-You can destroy dev and prod infrastructure when not in use, especially during early phases.
-
-That is often the smartest move for cost control in a lab or showcase project.
-
-### Practical rule
-
-Destroy expensive runtime infrastructure when idle.
-Do not destroy the remote backend unless you are intentionally tearing down the entire project.
-
----
-
-## Cost Notes
-
-This repository is built to reflect a realistic AWS platform structure, not a free-tier-only toy setup.
-
-### Important cost drivers
-
-The main cost drivers in the current and upcoming phases are:
-
-- NAT Gateway
-- Application Load Balancer
-- Elastic IP
-- CloudWatch Logs
-- ECS-related resources added in later phases
-
-### Practical cost advice
+## Cost and safety guidance
 
 - Keep the backend bucket persistent
-- Destroy environment infrastructure when you are not actively using it
-- Do not leave NAT gateways and ALBs running for no reason
-- Treat prod as optional until the application deployment phase if cost matters
-
-AWS is very good at charging rent for resources that sit there quietly doing nothing. That part is unfortunately world-class.
-
-### Dev NAT strategy
-
-For Phase 4 preparation, the `dev` environment now has `enable_nat_gateway = true`.
-This change was made so ECS workloads running in private subnets can use outbound access more like a real deployment environment.
-This improves dev/prod networking consistency for container runtime behavior, at the cost of higher idle AWS spend.
-
----
-
-## Security Notes
-
-The current Phase 3 setup favors momentum and platform progress over final production hardening.
-
-### Current tradeoffs
-
-At this stage, the platform is intentionally simplified:
-
-- ALB behavior is still basic
-- HTTP may still be used during this phase
-- Ingress may be broader than the final desired posture
-- Security hardening is still incomplete
-
-### Planned hardening
-
-Upcoming improvements are expected to include:
-
-- HTTPS with ACM
-- tighter ingress controls
-- improved separation of public and private exposure
-- stricter IAM permissions for ECS workloads
-- more production-grade deployment and runtime controls
-
-This is deliberate. The platform is being built in the correct order:
-
-**foundation first, then deployment, then hardening and polish**
-
-### Dev vs prod networking tradeoff
-
-At this stage, both `dev` and `prod` use NAT-enabled private subnet routing.
-This keeps runtime behavior more consistent across environments as the project moves into ECS service and deployment work.
-The cost tradeoff remains important, so unused environment infrastructure should still be destroyed when idle.
-
----
-
-## Current Terraform Modules
-
-`vpc`
-
-Creates the base networking layer, including:
-
-- VPC
-- public subnets
-- private subnets
-- internet gateway
-- optional NAT gateway
-- route tables
-
-`security_groups`
-
-Creates security groups for:
-
-- ALB access
-- ECS-related traffic flow
-- internal connectivity patterns
-
-`cloudwatch_logs`
-
-Creates CloudWatch log groups for platform and application logging.
-
-`ecs_cluster`
-
-Creates the ECS cluster that will later host workloads and services.
-
-`alb`
-
-Creates the Application Load Balancer foundation, including:
-
-- ALB
-- listener
-- target group
-
-To satisfy AWS name-length limits, ALB-related resources use a short configurable prefix (`alb_name_prefix`) instead of the full project name.
-
-This is currently platform groundwork, not yet a complete app-routing solution.
-
----
-
-## Design Principles
-
-This project follows a few simple rules:
-
-- **Separate environments clearly**
-- **Reuse modules instead of copy-pasting infrastructure**
-- **Use OIDC instead of static AWS credentials**
-- **Keep backend state persistent**
-- **Destroy expensive runtime infrastructure when idle**
-- **Build in phases instead of pretending the whole platform already exists**
-- **Keep the repo honest about what is done and what is still planned**
-
-That last one matters more than people think. A smaller repo that tells the truth beats a flashy repo that oversells itself.
-
----
-
-## Why This Repo Exists
-
-This repository is meant to be:
-
-- a real learning project
-- a practical Terraform showcase
-- a clean base for future ECS deployment work
-- a phased build that can be reviewed and understood step by step
-
-It is not trying to be a giant fake-enterprise template stuffed with unfinished promises.
-
-That kind of repo looks impressive for five minutes and painful forever.
-
----
-
-## Next Planned Work
-
-The next major phase is expected to focus on:
-
-- adding an ECR module
-- adding ECS task definition support
-- adding ECS service support
-- connecting ECS services to the ALB target group
-- creating an application deployment workflow
-- improving security posture
-- moving toward HTTPS and more production-grade behavior
-- Introduce selective VPC endpoints later to reduce NAT dependence for AWS service access
-
-That is where this foundation starts turning into a real deployable platform.
-
----
-
-## Contributing
-
-This is currently a personal showcase and learning project, but suggestions and improvements are welcome.
-
-If you fork or adapt this repository:
-
-- review all environment naming
-- review security defaults carefully
-- review cost-impacting resources
-- avoid committing secrets
-- treat this as a foundation, not a finished production template
-
----
-
-## Disclaimer
-
-This repository is a learning and showcase project.
-
-It is not yet a fully production-ready ECS deployment stack.
-Use it as a foundation and reference point, not as a finished blueprint.
-
----
-
-## License
-
-This project is licensed under the terms of the license included in this repository.
+- Keep bootstrap resources persistent unless you are intentionally rebuilding the control plane
+- Destroy expensive runtime infrastructure when idle if this is still a showcase/lab environment
+- Review prod plans more carefully than dev plans
+- Do not trust old README text after large Terraform refactors unless it has been refreshed
